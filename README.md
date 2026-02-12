@@ -1,102 +1,111 @@
-# WhoseNext
+# WhoseNext - Smart Placement Queue System
 
-A real-time Placement Cell Queue Management System built with Node.js and vanilla JavaScript. Features a live student status dashboard, admin control panel with bulk Excel upload, and dynamic interview workflow routing.
+A professional, real-time Queue Management System designed for College Placement Cells. It streamlines the interview process by managing candidate workflows, displaying live status updates on large screens, and handling complex multi-stage interview paths.
 
-## ✨ Features
+## ✨ Key Features
 
-### 👨‍💼 Admin Dashboard (Control Center)
-- **Manual Entry:** Add candidates one by one with support for single rooms or multi-stage workflows (e.g., `Room 302` ➜ `Technical Round` ➜ `HR`).
-- **Bulk Upload:** Upload an Excel (`.xlsx`) file to add hundreds of students instantly.
-- **Queue Management:** View the active list and remove candidates once their interview process is complete.
-- **Workflow Toggle:** Switch between "Single Room" mode and "Multi-Room Path" mode effortlessly.
+### 👨‍💼 Admin Command Center
+- **Workflow Routing:** Support for multi-stage interviews.
+    - *Example:* Enter `Aptitude, TR, HR` and the system tracks the candidate through every step.
+- **Smart Actions:** Context-aware buttons (`Call In`, `Send to [Next Room]`, `Finish`).
+- **Bulk Excel Upload:** Upload `.xlsx` files. The system automatically detects comma-separated rooms and converts them into a sequence path.
+- **Live Branding:** Update the **Company Name** (e.g., "Google", "Amazon") instantly on the public display.
+- **Dark Mode:** One-click toggle for night drives or low-light control rooms.
 
-### 📢 User Dashboard (Live Display)
-- **Real-Time Updates:** The screen refreshes automatically every 2 seconds to show the latest status.
-- **TV Mode:** Optimized for large screens/projectors in waiting halls with clear, readable typography.
-- **Visual Paths:** Displays interview workflows as a clear step-by-step path with arrows.
+### 📢 Public Display (TV Mode)
+- **Responsive Grid Layout:** Automatically adjusts layout based on the number of active interviews (Single Card vs. Multi-Grid).
+- **Visual Path Tracking:**
+    - **Grey:** Completed Rounds.
+    - **Green/Glowing:** Current Round (Active).
+    - **Dashed:** Pending Rounds.
+- **"Up Next" Scroll:** A scrollable sidebar list for waiting candidates so the UI never breaks.
+- **Professional UI:** High-contrast typography, avatar placeholders, and smooth animations.
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Frontend:** HTML5, CSS3, Vanilla JavaScript (Fetch API)
-- **Backend:** Node.js, Express.js
-- **Data Handling:** In-Memory Array (Mock Database)
-- **File Parsing:** `xlsx` library for Excel sheet processing
+- **Frontend:** Vanilla JavaScript, HTML5, CSS3 (CSS Variables for Theming).
+- **Backend:** Node.js, Express.js.
+- **Data:** In-Memory Storage (Resets on server restart).
+- **Libraries:** `xlsx` (SheetJS) for Excel parsing.
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Installation & Setup
 
-### Prerequisites
-Make sure you have [Node.js](https://nodejs.org/) installed on your machine.
+### 1. Prerequisites
+Ensure you have [Node.js](https://nodejs.org/) installed.
 
-### Installation
+### 2. Clone & Install
+```bash
+git clone https://github.com/your-username/whosenext.git
+cd whosenext
+npm install
+```
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-username/placement-queue-system.git
-   cd placement-queue-system
-   ```
+### 3. Run the Server
+```bash
+node server.js
+```
 
-2. **Install Dependencies**
-   ```bash
-   npm install
-   ```
+### 4. Open the App
+- **Admin Panel:** [http://localhost:3001/admin.html](http://localhost:3001/admin.html)
+- **Public Display:** [http://localhost:3001/](http://localhost:3001/)
 
-3. **Start the Server**
-   ```bash
-   node server.js
-   ```
+---
 
-4. **Access the Application**
-   - **Admin Panel:** [http://localhost:3001/admin.html](http://localhost:3001/admin.html)
-   - **Live Display:** [http://localhost:3001/](http://localhost:3001/)
+## 📝 Usage Guide
+
+### 🧑‍💻 For Admins
+
+**1. Setting the Stage**
+- Open the Admin Panel.
+- Enter the **Company Name** (e.g., "TCS Digital") in the sidebar and click **Set Branding**.
+- Toggle **Dark Mode** (🌙) if preferred.
+
+**2. Adding Candidates**
+- **Manual:** Enter Name and Room.
+    - *Single Room:* `302`
+    - *Multi-Room:* `302, Lab 1, HR Cabin`
+- **Excel:** Upload a file with headers `Name` and `Room`. The system auto-converts commas in the room column to paths.
+
+**3. Managing the Flow**
+- Click **📢 Call In** to start an interview.
+- If the candidate has more rounds, click **➝ Send to [Next Room]**.
+- If it's the last round, click **✓ Finish**.
+
+---
+
+### 📺 For The Display Screen
+
+- Connect a laptop to a Projector or TV.
+- Open [http://localhost:3001/](http://localhost:3001/).
+- Press **F11** for Full Screen.
+- The screen will auto-refresh every 2 seconds.
 
 ---
 
 ## 📂 Project Structure
 
 ```text
-placement-project/
+whosenext/
 │
-├── node_modules/       # Installed dependencies
-├── public/             # Static files (Frontend)
-│   ├── admin.html      # Admin control interface
-│   ├── user.html       # Public display interface
-│   └── style.css       # Shared styling
+├── node_modules/       # Dependencies
+├── public/             # Frontend Assets
+│   ├── admin.html      # Admin Dashboard logic
+│   ├── user.html       # TV Display logic
+│   └── style.css       # Global Styles & Dark Mode
 │
-├── server.js           # Backend logic (Express Server)
-├── package.json        # Project metadata & dependencies
-└── README.md           # Project documentation
+├── server.js           # Express Server & API Routes
+├── package.json        # Config & Scripts
+└── README.md           # Documentation
 ```
 
 ---
 
-## 📝 Usage Guide
-
-### 1. Adding a Student (Manual)
-1. Go to the **Admin Dashboard**.
-2. Toggle "Multi-Room Mode" if the student needs to visit multiple locations.
-3. Enter **Name** and **Room/Path**.
-4. Click **Add**.
-
-### 2. Bulk Uploading from Excel
-1. Prepare an Excel sheet with two columns: `Name` and `Room`.
-2. In the **Room** column, you can use commas to specify a path (e.g., `Lab 1, Room 405`).
-3. Click **"Choose File"** in the Admin Dashboard and select your sheet.
-4. Click **"Process Excel"**.
-
-### 3. Displaying the Queue
-1. Open the **Live Display** link on a projector or large monitor in the waiting area.
-2. The list will auto-update as the Admin adds or removes students.
-
----
-
 ## 🤝 Contributing
-Contributions are welcome! Feel free to open issues or submit pull requests.
-
----
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
 ## 📄 License
-This project is open-source and available under the [MIT License](LICENSE).
+[MIT](LICENSE)
