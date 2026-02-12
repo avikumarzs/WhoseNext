@@ -1,0 +1,187 @@
+/* 1. GLOBAL VARIABLES (Easy to change colors later) */
+:root {
+    --primary-color: #2c3e50; /* Navy Blue */
+    --accent-color: #3498db;  /* Light Blue */
+    --success-color: #27ae60; /* Green */
+    --danger-color: #e74c3c;  /* Red */
+    --bg-color: #ecf0f1;      /* Light Grey Background */
+    --card-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* 2. BASE STYLES */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    margin: 0;
+    padding: 0;
+    color: #333;
+}
+
+/* 3. THE HEADER (Shared across both pages) */
+header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 1rem 2rem;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    letter-spacing: 1px;
+}
+
+/* 4. LAYOUT CONTAINERS */
+.container {
+    max-width: 800px;
+    margin: 2rem auto; /* Centers the box */
+    padding: 0 1rem;
+}
+
+/* 5. CARDS (The white boxes) */
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 20px;
+}
+
+/* 6. INPUT FORMS (Admin Only) */
+.input-group {
+    display: flex;
+    gap: 10px;
+}
+
+input {
+    flex: 1; /* Takes up available space */
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+input:focus {
+    border-color: var(--accent-color);
+    outline: none;
+}
+
+/* 7. BUTTONS */
+button {
+    padding: 12px 24px;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.3s;
+    font-weight: bold;
+}
+
+button:hover {
+    background-color: #2980b9;
+}
+
+button.delete-btn {
+    background-color: var(--danger-color);
+    padding: 8px 16px;
+    font-size: 0.9rem;
+}
+
+button.delete-btn:hover {
+    background-color: #c0392b;
+}
+
+/* 8. LIST ITEMS */
+.student-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.student-row:last-child {
+    border-bottom: none;
+}
+
+.room-badge {
+    background-color: var(--success-color);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+/* 9. BIG SCREEN MODE (Specific for User View) */
+.tv-mode .student-row {
+    font-size: 1.5rem; /* Bigger text for distance */
+    padding: 25px;
+}
+
+.tv-mode .room-badge {
+    font-size: 1.2rem;
+    padding: 8px 20px;
+}
+
+/* TOGGLE SWITCH STYLES */
+.toggle-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Space between text and switch */
+    margin-bottom: 15px;
+    font-weight: bold;
+    color: #555;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+}
+
+/* Hide the ugly default checkbox */
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+/* The Slider Background */
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+/* The Moving Circle */
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Color when ON */
+input:checked + .slider {
+    background-color: #2c3e50; /* Matches your header */
+}
+
+/* Move circle when ON */
+input:checked + .slider:before {
+    transform: translateX(24px);
+}

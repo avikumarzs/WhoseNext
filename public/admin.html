@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <style>
+        .section-divider { margin: 25px 0; border-top: 1px solid #ddd; padding-top: 20px; position: relative; }
+        .section-divider span { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: white; padding: 0 15px; color: #888; font-weight: bold; }
+        .file-upload-box { border: 2px dashed var(--accent-color); padding: 20px; text-align: center; border-radius: 8px; background: #f9fcff; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🎓 Placement Control Center</h1>
+    </header>
+
+    <div class="container">
+        
+        <div class="card">
+    <h3>Manual Entry</h3>
+    
+    <div class="toggle-wrapper">
+        <span>Single Room</span>
+        <label class="switch">
+            <input type="checkbox" id="sequenceToggle" onchange="toggleMode()">
+            <span class="slider"></span>
+        </label>
+        <span>Multi-Room Path</span>
+    </div>
+
+    <div class="input-group">
+        <input type="text" id="name" placeholder="Candidate Name">
+        <input type="text" id="room" placeholder="Room No." style="transition: all 0.3s ease;">
+        <button onclick="addStudent()">Add</button>
+    </div>
+</div>
+
+        <div class="section-divider"><span>OR</span></div>
+
+        <div class="card">
+            <h3>Excel Upload</h3>
+            <p style="font-size: 0.8rem; color: #666;">Upload .xlsx with columns: <b>Name</b> and <b>Room</b></p>
+            <div class="file-upload-box">
+                <input type="file" id="excelFile" accept=".xlsx, .xls" />
+                <button onclick="handleExcelUpload()" style="margin-top: 10px;">Process Excel</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Active Queue</h3>
+            <div id="adminList">Loading...</div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- MANUAL LOGIC ---
+        function toggleMode() {
+            const isSeq = document.getElementById('sequenceToggle').checked;
+            document.getElementById('room').placeholder = isSeq ? "e.g. 302, Lab 1, HR" : "Room No.";
+        }
+
+        async function addStudent() {
+            const name = document.getElementById('name').value;
+            let room = document.getElementById('room').value;
+            const isSeq = document.getElementById('sequenceToggle').checked;
+
+            if(!name || !room) return alert("Missing data");
+
+            // Format multi-rooms if toggle is on
+            const finalRoom = isSeq ? room.split(',').map(s => s.trim()).join(' ➜ ') : room;
+            await postToServer(name, finalRoom);
+            
+            document.getElementById('name').value = '';
+            document.getElementById('room').value = '';
+            loadQueue();
+        }
+
+        // --- EXCEL LOGIC ---
+        function handleExcelUpload() {
+            const file = document.getElementById('excelFile').files[0];
+            if(!file) return alert("Select a file first!");
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const sheetName = workbook.SheetNames[0];
+                const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+                for(let row of json) {
+                    // Extract Name and Room (Case-insensitive check)
+                    const name = row.Name || row.name;
+                    let room = row.Room || row.room;
+
+                    if(name && room) {
+                        // Automatically check for commas in Excel room column
+                        const formattedRoom = String(room).includes(',') 
+                            ? String(room).split(',').map(s => s.trim()).join(' ➜ ') 
+                            : room;
+                        
+                        await postToServer(name, formattedRoom);
+                    }
+                }
+                alert("Excel Uploaded Successfully!");
+                loadQueue();
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Helper to send data
+        async function postToServer(name, room) {
+            await fetch('/add-student', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, room })
+            });
+        }
+
+        // --- DISPLAY LOGIC ---
+        async function loadQueue() {
+            const res = await fetch('/get-queue');
+            const data = await res.json();
+            const list = document.getElementById('adminList');
+            list.innerHTML = '';
+            data.forEach((s, i) => {
+                list.innerHTML += `<div class="student-row">
+                    <span><b>${s.name}</b>: ${s.room}</span>
+                    <button class="delete-btn" onclick="removeStudent(${i})">Remove</button>
+                </div>`;
+            });
+        }
+
+        async function removeStudent(i) {
+            await fetch(`/remove-student/${i}`, { method: 'DELETE' });
+            loadQueue();
+        }
+
+        setInterval(loadQueue, 3000);
+        loadQueue();
+    </script>
+</body>
+</html>

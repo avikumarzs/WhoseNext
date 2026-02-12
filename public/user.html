@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Live Queue</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Flow Chart Styles */
+        .path-container { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+        .step { background: #e3f2fd; color: #0d47a1; padding: 6px 14px; border-radius: 20px; font-weight: bold; border: 1px solid #90caf9; font-size: 1.1rem;}
+        .arrow { color: #555; font-size: 1.5rem; font-weight: bold; line-height: 1;}
+        
+        /* Single Room Style */
+        .single-room { background-color: #28a745; color: white; padding: 6px 15px; border-radius: 20px; font-weight: bold; font-size: 1.1rem; }
+
+        /* Animation */
+        .student-row { animation: slideIn 0.5s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>📢 Live Interview Status</h1>
+    </header>
+
+    <div class="container tv-mode">
+        <div class="card" id="displayArea">
+            <p style="text-align:center; color:#777;">Connecting...</p>
+        </div>
+    </div>
+
+    <script>
+        async function fetchUpdates() {
+            try {
+                const res = await fetch('/get-queue');
+                if (!res.ok) throw new Error("Server not responding");
+                
+                const data = await res.json();
+                const display = document.getElementById('displayArea');
+                
+                // Clear the list to rebuild it
+                display.innerHTML = '';
+
+                if(data.length === 0) {
+                    display.innerHTML = '<p style="text-align:center; color:#ccc; font-size: 1.5rem; padding: 3rem;">No interviews scheduled.</p>';
+                    return;
+                }
+
+                data.forEach(s => {
+                    let roomHtml = '';
+                    
+                    // SAFETY CHECK: Ensure s.room is a string before checking includes
+                    const roomStr = String(s.room);
+
+                    // LOGIC: If it has the special arrow OR a comma, treat as sequence
+                    if(roomStr.includes('➜') || roomStr.includes(',')) {
+                        
+                        // Split by arrow OR comma (handles both manual and excel uploads)
+                        const separator = roomStr.includes('➜') ? '➜' : ',';
+                        const steps = roomStr.split(separator);
+                        
+                        roomHtml = `<div class="path-container">`;
+                        steps.forEach((step, index) => {
+                            roomHtml += `<span class="step">${step.trim()}</span>`;
+                            if (index < steps.length - 1) {
+                                roomHtml += `<span class="arrow">→</span>`;
+                            }
+                        });
+                        roomHtml += `</div>`;
+                    
+                    } else {
+                        // Standard Single Room
+                        roomHtml = `<span class="single-room">${roomStr}</span>`;
+                    }
+
+                    const row = document.createElement('div');
+                    row.className = 'student-row';
+                    row.innerHTML = `
+                        <div style="width: 100%;">
+                            <div style="font-size: 1.8rem; font-weight:bold; color: #333; margin-bottom: 5px;">${s.name}</div>
+                            ${roomHtml}
+                        </div>
+                    `;
+                    display.appendChild(row);
+                });
+
+            } catch (error) {
+                console.error("Display Error:", error);
+            }
+        }
+
+        // Poll every 2 seconds
+        setInterval(fetchUpdates, 2000);
+        fetchUpdates();
+    </script>
+</body>
+</html>
