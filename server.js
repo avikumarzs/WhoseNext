@@ -2,54 +2,63 @@ const express = require('express');
 const app = express();
 const path = require('path');
 
-// Middleware to parse JSON bodies
 app.use(express.json());
-
-// Serve static files from the 'public' folder
 app.use(express.static(path.join(__dirname, 'public')));
 
-// In-memory data store
+// Data Store
 let placementQueue = [];
+let companyName = "PLACEMENT DRIVE 2026"; // Default Title
 
-// Log every request to the console for debugging
-app.use((req, res, next) => {
-    console.log(`${req.method} request for '${req.url}'`);
-    next();
-});
+// --- ROUTES ---
 
-// Route: Add a student
-app.post('/add-student', (req, res) => {
-    const { name, room } = req.body;
-    console.log(`Adding Student: ${name}, Room: ${room}`);
-    placementQueue.push({ name, room });
-    res.json({ message: "Success", currentQueue: placementQueue });
-});
-
-// Route: Get the queue
-app.get('/get-queue', (req, res) => {
-    res.json(placementQueue);
-});
-
-// Route: Remove a student
-app.delete('/remove-student/:index', (req, res) => {
-    const index = req.params.index;
-    if (index > -1 && index < placementQueue.length) {
-        console.log(`Removing student at index: ${index}`);
-        placementQueue.splice(index, 1);
-    }
-    res.json({ message: "Removed" });
-});
-
-// Route: Default Home Page (User View)
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'user.html'));
 });
 
-// START SERVER ON PORT 3001
-app.listen(3001, () => {
-    console.log("--------------------------------------------------");
-    console.log("✅ SERVER RUNNING ON PORT 3001 (New Port)");
-    console.log("👉 Admin Dashboard: http://localhost:3001/admin.html");
-    console.log("👉 User Dashboard:  http://localhost:3001/");
-    console.log("--------------------------------------------------");
+// 1. COMPANY NAME ROUTES
+app.post('/set-company', (req, res) => {
+    companyName = req.body.company;
+    res.json({ message: "Updated" });
 });
+
+app.get('/get-company', (req, res) => {
+    res.json({ company: companyName });
+});
+
+// 2. QUEUE ROUTES (Standard)
+app.post('/add-student', (req, res) => {
+    const { name, room } = req.body;
+    let pathArray = [];
+    
+    // Parse Path
+    if (room.includes('➜')) pathArray = room.split('➜').map(s => s.trim());
+    else if (room.includes(',')) pathArray = room.split(',').map(s => s.trim());
+    else pathArray = [room.trim()];
+
+    placementQueue.push({ 
+        name, path: pathArray, currentStep: 0, status: 'waiting', id: Date.now() 
+    });
+    res.json({ message: "Added" });
+});
+
+app.get('/get-queue', (req, res) => {
+    res.json(placementQueue);
+});
+
+app.post('/update-status', (req, res) => {
+    const { index, action } = req.body;
+    const student = placementQueue[index];
+    if (student) {
+        if (action === 'call') student.status = 'interviewing';
+        else if (action === 'next') { student.currentStep++; student.status = 'waiting'; }
+        else if (action === 'finish') placementQueue.splice(index, 1);
+    }
+    res.json({ message: "Updated" });
+});
+
+app.delete('/remove-student/:index', (req, res) => {
+    placementQueue.splice(req.params.index, 1);
+    res.json({ message: "Removed" });
+});
+
+app.listen(3001, () => console.log("Server running on http://localhost:3001"));

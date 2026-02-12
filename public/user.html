@@ -2,95 +2,97 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Live Queue</title>
+    <title>Live Display</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <style>
-        /* Flow Chart Styles */
-        .path-container { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
-        .step { background: #e3f2fd; color: #0d47a1; padding: 6px 14px; border-radius: 20px; font-weight: bold; border: 1px solid #90caf9; font-size: 1.1rem;}
-        .arrow { color: #555; font-size: 1.5rem; font-weight: bold; line-height: 1;}
-        
-        /* Single Room Style */
-        .single-room { background-color: #28a745; color: white; padding: 6px 15px; border-radius: 20px; font-weight: bold; font-size: 1.1rem; }
-
-        /* Animation */
-        .student-row { animation: slideIn 0.5s ease-out; }
-        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
-    </style>
 </head>
 <body>
-
     <header>
-        <h1>📢 Live Interview Status</h1>
+        <h1 id="headerTitle">🎓 PLACEMENT DRIVE</h1>
+        <div style="display:flex; align-items:center; gap:15px;">
+            <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+            <div style="font-weight:600; color:var(--text-muted);" id="clock">12:00</div>
+        </div>
     </header>
 
-    <div class="container tv-mode">
-        <div class="card" id="displayArea">
-            <p style="text-align:center; color:#777;">Connecting...</p>
+    <div class="main-content">
+        <div class="tv-layout">
+            <div class="active-grid-container">
+                <h3 style="color:var(--text-muted); margin-bottom:1rem; text-transform:uppercase; letter-spacing:1px;">🟢 Now Interviewing</h3>
+                <div id="nowServingGrid" class="now-serving-grid"></div>
+            </div>
+            <div class="queue-list">
+                <div class="queue-header">⏳ Up Next</div>
+                <div id="upNextList" style="overflow-y:auto; flex:1;"></div>
+            </div>
         </div>
     </div>
 
     <script>
-        async function fetchUpdates() {
-            try {
-                const res = await fetch('/get-queue');
-                if (!res.ok) throw new Error("Server not responding");
-                
-                const data = await res.json();
-                const display = document.getElementById('displayArea');
-                
-                // Clear the list to rebuild it
-                display.innerHTML = '';
-
-                if(data.length === 0) {
-                    display.innerHTML = '<p style="text-align:center; color:#ccc; font-size: 1.5rem; padding: 3rem;">No interviews scheduled.</p>';
-                    return;
-                }
-
-                data.forEach(s => {
-                    let roomHtml = '';
-                    
-                    // SAFETY CHECK: Ensure s.room is a string before checking includes
-                    const roomStr = String(s.room);
-
-                    // LOGIC: If it has the special arrow OR a comma, treat as sequence
-                    if(roomStr.includes('➜') || roomStr.includes(',')) {
-                        
-                        // Split by arrow OR comma (handles both manual and excel uploads)
-                        const separator = roomStr.includes('➜') ? '➜' : ',';
-                        const steps = roomStr.split(separator);
-                        
-                        roomHtml = `<div class="path-container">`;
-                        steps.forEach((step, index) => {
-                            roomHtml += `<span class="step">${step.trim()}</span>`;
-                            if (index < steps.length - 1) {
-                                roomHtml += `<span class="arrow">→</span>`;
-                            }
-                        });
-                        roomHtml += `</div>`;
-                    
-                    } else {
-                        // Standard Single Room
-                        roomHtml = `<span class="single-room">${roomStr}</span>`;
-                    }
-
-                    const row = document.createElement('div');
-                    row.className = 'student-row';
-                    row.innerHTML = `
-                        <div style="width: 100%;">
-                            <div style="font-size: 1.8rem; font-weight:bold; color: #333; margin-bottom: 5px;">${s.name}</div>
-                            ${roomHtml}
-                        </div>
-                    `;
-                    display.appendChild(row);
-                });
-
-            } catch (error) {
-                console.error("Display Error:", error);
-            }
+        // THEME LOGIC
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const icon = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+            document.querySelector('.theme-toggle').innerText = icon;
         }
 
-        // Poll every 2 seconds
+        // CLOCK
+        setInterval(() => {
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        }, 1000);
+
+        // DATA FETCH LOOP
+        async function fetchUpdates() {
+            // 1. Get Company Name
+            const metaRes = await fetch('/get-company');
+            const metaData = await metaRes.json();
+            document.getElementById('headerTitle').innerText = `🎓 ${metaData.company}`;
+
+            // 2. Get Queue Data
+            const res = await fetch('/get-queue');
+            const data = await res.json();
+            
+            const grid = document.getElementById('nowServingGrid');
+            const list = document.getElementById('upNextList');
+            
+            const interviewing = data.filter(s => s.status === 'interviewing');
+            const waiting = data.filter(s => s.status === 'waiting');
+
+            // Render Grid
+            grid.innerHTML = '';
+            if(interviewing.length === 0) grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--text-muted);">No Active Interviews</div>`;
+            
+            interviewing.forEach(s => {
+                const initials = s.name.substring(0,2).toUpperCase();
+                let bubblesHtml = '<div class="path-display">';
+                s.path.forEach((step, idx) => {
+                    let cls = 'bubble-pending';
+                    if (idx < s.currentStep) cls = 'bubble-completed';
+                    if (idx === s.currentStep) cls = 'bubble-active';
+                    bubblesHtml += `<span class="room-bubble ${cls}">${step}</span>`;
+                    if (idx < s.path.length -1) bubblesHtml += `<span class="room-arrow">➝</span>`;
+                });
+                bubblesHtml += '</div>';
+
+                grid.innerHTML += `
+                    <div class="now-serving-card pulsing">
+                        <div class="now-label">Interviewing</div>
+                        <div class="avatar-circle">${initials}</div>
+                        <div class="now-name">${s.name}</div>
+                        ${bubblesHtml}
+                    </div>`;
+            });
+
+            // Render List
+            list.innerHTML = '';
+            waiting.forEach((s, i) => {
+                list.innerHTML += `
+                    <div class="queue-item">
+                        <div><div style="font-size:0.7rem; font-weight:800; color:var(--text-muted);">#${i+1}</div><div class="queue-name">${s.name}</div></div>
+                        <div style="font-weight:600; color:var(--accent);">Go to: ${s.path[s.currentStep]}</div>
+                    </div>`;
+            });
+        }
         setInterval(fetchUpdates, 2000);
         fetchUpdates();
     </script>
