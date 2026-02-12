@@ -1,4 +1,5 @@
 # WhoseNext
+
 A real-time Placement Cell Queue Management System built with Node.js and vanilla JavaScript. Features a live student status dashboard, admin control panel with bulk Excel upload, and dynamic interview workflow routing.
 
 ## ✨ Features
@@ -34,24 +35,29 @@ Make sure you have [Node.js](https://nodejs.org/) installed on your machine.
 
 1. **Clone the repository**
    ```bash
-   git clone [https://github.com/your-username/placement-queue-system.git](https://github.com/your-username/placement-queue-system.git)
+   git clone https://github.com/your-username/placement-queue-system.git
    cd placement-queue-system
+   ```
 
-   Install Dependencies
+2. **Install Dependencies**
+   ```bash
+   npm install
+   ```
 
-Bash
-npm install
-Start the Server
+3. **Start the Server**
+   ```bash
+   node server.js
+   ```
 
-Bash
-node server.js
-Access the Application
+4. **Access the Application**
+   - **Admin Panel:** [http://localhost:3001/admin.html](http://localhost:3001/admin.html)
+   - **Live Display:** [http://localhost:3001/](http://localhost:3001/)
 
-Admin Panel: http://localhost:3001/admin.html
+---
 
-Live Display: http://localhost:3001/
+## 📂 Project Structure
 
-📂 Project Structure
+```text
 placement-project/
 │
 ├── node_modules/       # Installed dependencies
@@ -63,32 +69,34 @@ placement-project/
 ├── server.js           # Backend logic (Express Server)
 ├── package.json        # Project metadata & dependencies
 └── README.md           # Project documentation
-📝 Usage Guide
-1. Adding a Student (Manual)
-Go to the Admin Dashboard.
+```
 
-Toggle "Multi-Room Mode" if the student needs to visit multiple locations.
+---
 
-Enter Name and Room/Path.
+## 📝 Usage Guide
 
-Click Add.
+### 1. Adding a Student (Manual)
+1. Go to the **Admin Dashboard**.
+2. Toggle "Multi-Room Mode" if the student needs to visit multiple locations.
+3. Enter **Name** and **Room/Path**.
+4. Click **Add**.
 
-2. Bulk Uploading from Excel
-Prepare an Excel sheet with two columns: Name and Room.
+### 2. Bulk Uploading from Excel
+1. Prepare an Excel sheet with two columns: `Name` and `Room`.
+2. In the **Room** column, you can use commas to specify a path (e.g., `Lab 1, Room 405`).
+3. Click **"Choose File"** in the Admin Dashboard and select your sheet.
+4. Click **"Process Excel"**.
 
-In the Room column, you can use commas to specify a path (e.g., Lab 1, Room 405).
+### 3. Displaying the Queue
+1. Open the **Live Display** link on a projector or large monitor in the waiting area.
+2. The list will auto-update as the Admin adds or removes students.
 
-Click "Choose File" in the Admin Dashboard and select your sheet.
+---
 
-Click "Process Excel".
-
-3. Displaying the Queue
-Open the Live Display link on a projector or large monitor in the waiting area.
-
-The list will auto-update as the Admin adds or removes students.
-
-🤝 Contributing
+## 🤝 Contributing
 Contributions are welcome! Feel free to open issues or submit pull requests.
 
-📄 License
-This project is open-source and available under the MIT License.
+---
+
+## 📄 License
+This project is open-source and available under the [MIT License](LICENSE).
