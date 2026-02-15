@@ -6,6 +6,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
     <header>
@@ -15,9 +16,9 @@
 
     <div class="dashboard-container">
         <div class="sidebar">
-            <a href="/results" class="btn-primary" style="text-decoration:none; display:block; text-align:center; background: var(--primary); color: white; margin-bottom: 2rem;">
-                📋 Go to Selection Board
-            </a>
+            <a href="/results" class="btn-primary" style="text-decoration:none; display:block; text-align:center; background: var(--accent); color: white; margin-bottom: 1.5rem; font-weight: 800;">
+    📋 Go to Selection Board
+</a>
 
             <div style="background: var(--bg-main); padding: 1rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem;">
                 <div class="input-group">
@@ -46,6 +47,22 @@
                 </label>
                 <div id="uploadStatus" style="font-size: 0.8rem; color: var(--accent); text-align: center; margin-top: 5px; height: 15px;"></div>
             </div>
+            <button onclick="resetSystem()" style="background: #ff4757; color: white; margin-top: 2rem; border: none; padding: 10px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 800; opacity: 0.6;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
+                🗑️ Reset System for New Drive
+            </button>
+
+            <script>
+            async function resetSystem() {
+                if (confirm("🚨 WARNING: This will PERMANENTLY DELETE all student data and decisions. Are you sure?")) {
+                    const password = prompt("Type 'RESET' to confirm:");
+                    if (password === 'RESET') {
+                        await fetch('/reset-all', { method: 'POST' });
+                        alert("System has been cleared.");
+                        loadQueue(); // Refresh table
+                    }
+                }
+            }
+            </script>
         </div>
 
         <div class="main-content">
@@ -54,6 +71,11 @@
                 <button onclick="loadQueue()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer;" title="Refresh List">🔄</button>
             </div>
 
+            <div style="margin-bottom: 1.5rem; position: relative;">
+    <input type="text" id="adminSearch" onkeyup="filterQueue()" placeholder="🔍 Search for candidate" 
+        style="width: 100%; padding: 12px 15px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); font-size: 0.95rem; outline: none; transition: 0.3s;"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+</div>
             <table class="data-table">
                 <thead>
                     <tr>
@@ -190,14 +212,56 @@
                         </td>
                     </tr>`;
             });
+            filterQueue();
         }
         
         async function sendAction(i, action) { await fetch('/update-status', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ index: i, action }) }); loadQueue(); }
         async function remove(i) { if(confirm("Remove this student?")) { await fetch(`/remove-student/${i}`, { method: 'DELETE' }); loadQueue(); } }
         
         // Auto-refresh every 3 seconds
-        setInterval(loadQueue, 3000);
+        const socket = io();
+        socket.on('queueUpdated', async () => {
+    await loadQueue(); // Wait for the table to finish building
+    filterQueue();     // Immediately re-apply the search filter
+});
         loadQueue();
+        function filterQueue() {
+    const input = document.getElementById('adminSearch');
+    const query = input.value.toLowerCase().trim();
+    const tbody = document.querySelector('.data-table tbody');
+    
+    // 1. IMMEDIATELY remove any old "No results" row to prevent flickering
+    const oldAlert = tbody.querySelector('.no-results-row');
+    if (oldAlert) oldAlert.remove();
+
+    const rows = tbody.querySelectorAll('tr');
+    let matchCount = 0;
+
+    // 2. Hide/Show rows based on the current query
+    rows.forEach(row => {
+        const nameCell = row.cells[1];
+        if (nameCell) {
+            const name = nameCell.textContent.toLowerCase();
+            if (name.includes(query)) {
+                row.style.display = "";
+                matchCount++;
+            } else {
+                row.style.display = "none";
+            }
+        }
+    });
+
+    // 3. Only show alert if query isn't empty AND there are truly 0 matches
+    if (query !== "" && matchCount === 0) {
+        const noResultRow = document.createElement('tr');
+        noResultRow.className = 'no-results-row';
+        noResultRow.innerHTML = `
+            <td colspan="100%" style="text-align:center; padding:2rem; color:var(--text-muted); font-style:italic;">
+                🔍 No candidates found matching "${input.value}"
+            </td>`;
+        tbody.appendChild(noResultRow);
+    }
+}
     </script>
 </body>
 </html>

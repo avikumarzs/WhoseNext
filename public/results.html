@@ -5,93 +5,171 @@
     <title>Selection Board</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Selection-Specific Styles */
+        .decision-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+            padding: 1rem 0;
+        }
+
+        .student-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .student-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        .decision-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 1.5rem;
+        }
+
+        /* Status Colors */
+        .status-shortlisted { border-left: 8px solid #2ecc71; background: rgba(46, 204, 113, 0.05); }
+        .status-rejected { border-left: 8px solid #ff4757; background: rgba(255, 71, 87, 0.05); }
+
+        .btn-shortlist { background: #2ecc71; color: white; flex: 1; border: none; padding: 10px; border-radius: 6px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .btn-shortlist:hover { background: #27ae60; transform: scale(1.02); }
+
+        .btn-reject { background: #ff4757; color: white; flex: 1; border: none; padding: 10px; border-radius: 6px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .btn-reject:hover { background: #ff6b81; transform: scale(1.02); }
+
+        .decision-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body>
     <header>
-        <h1>📋 Selection Board</h1>
-        <button onclick="downloadExcel()" class="btn-primary" style="width: auto; background: #10b981; border:none;">
-            📥 Download Final Report
-        </button>
+        <div style="display:flex; align-items:center; gap:15px;">
+            <a href="/admin" style="text-decoration:none; font-size:1.2rem;">⬅️</a>
+            <h1>📋 Selection Board</h1>
+        </div>
+        <div style="display:flex; align-items:center; gap:15px;">
+            <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+            <button class="btn-primary" onclick="downloadExcel()" style="background:var(--success); border:none;">📥 Download Final Report</button>
+        </div>
     </header>
 
-    <div class="dashboard-container">
-        <div class="sidebar">
-            <h3 style="color:var(--text-muted); text-transform:uppercase; font-size:0.8rem; margin-bottom:1rem;">Navigation</h3>
-            <a href="admin.html" class="btn-primary" style="text-decoration:none; display:block; text-align:center; background:var(--surface); color:var(--text-main); border:1px solid #e2e8f0; margin-bottom: 2rem;">
-                ⬅ Back to Queue
-            </a>
-            
-            <div style="padding:1.5rem; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; color:#166534;">
-                <strong>Instructions:</strong><br>
-                <span style="font-size:0.9rem;">
-                1. Candidates appear here after "Finish".<br>
-                2. Mark Shortlist/Reject.<br>
-                3. Click <b>Download Final Report</b> to get the Excel sheet.
-                </span>
+    <div class="main-content" style="padding: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <div>
+                <h2 style="color:var(--text-main); margin:0;">Final Verdicts</h2>
+                <p style="color:var(--text-muted); font-size:0.9rem;">Review and decide the fate of candidates who completed the rounds.</p>
+            </div>
+            <div id="stats" style="font-weight: 800; color: var(--accent);">
+                Pending: <span id="pendingCount">0</span>
             </div>
         </div>
 
-        <div class="main-content">
-            <h2 style="margin-bottom: 1rem; color: var(--text-main);">Pending Decisions</h2>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Candidate Name</th>
-                        <th>Path Taken</th>
-                        <th style="text-align: right;">Decision</th>
-                    </tr>
-                </thead>
-                <tbody id="resultsList"></tbody>
-            </table>
-        </div>
+        <div id="resultsGrid" class="decision-grid">
+            </div>
     </div>
 
+    <script src="/socket.io/socket.io.js"></script>
     <script>
-        async function loadResults() {
-            const res = await fetch('/get-results');
-            const data = await res.json();
-            const list = document.getElementById('resultsList');
-            list.innerHTML = '';
+        const socket = io();
 
-            if(data.length === 0) {
-                list.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:3rem; color:#94a3b8;">No pending candidates.<br><span style="font-size:0.8rem">Finish an interview in the Admin Panel to see them here.</span></td></tr>';
+        // THEME TOGGLE
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const icon = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+            document.querySelector('.theme-toggle').innerText = icon;
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        }
+
+        // Apply saved theme on load
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+            document.querySelector('.theme-toggle').innerText = '☀️';
+        }
+
+        async function fetchResults() {
+            const res = await fetch('/get-results');
+            const students = await res.json();
+            const grid = document.getElementById('resultsGrid');
+            document.getElementById('pendingCount').innerText = students.length;
+
+            grid.innerHTML = '';
+
+            if (students.length === 0) {
+                grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:5rem; color:var(--text-muted); border: 2px dashed var(--border); border-radius:12px;">
+                    <h3>All caught up!</h3>
+                    <p>No candidates are currently awaiting a decision.</p>
+                </div>`;
                 return;
             }
 
-            data.forEach(s => {
-                list.innerHTML += `
-                    <tr>
-                        <td style="font-weight:700; font-size:1.1rem;">${s.name}</td>
-                        <td style="color:var(--text-muted);">${s.path.join(' → ')}</td>
-                        <td style="text-align: right;">
-                            <button onclick="makeDecision(${s.id}, 'Shortlisted')" style="background:#16a34a; color:white; padding:8px 16px; margin-right:10px; border-radius:6px; border:none; cursor:pointer;">
-                                ★ Shortlist
-                            </button>
-                            <button onclick="makeDecision(${s.id}, 'Rejected')" style="background:#dc2626; color:white; padding:8px 16px; border-radius:6px; border:none; cursor:pointer;">
-                                ✕ Reject
-                            </button>
-                        </td>
-                    </tr>`;
+            students.forEach(s => {
+                const initials = s.name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+                
+                grid.innerHTML += `
+                    <div class="student-card" id="card-${s.id}">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 1rem;">
+                            <div class="avatar-circle" style="width:40px; height:40px; margin:0; font-size:0.9rem;">${initials}</div>
+                            <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-main);">${s.name}</div>
+                        </div>
+                        
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                            <b>Path Taken:</b> ${s.path.join(' ➔ ')}
+                        </div>
+
+                        <div class="decision-actions">
+                            <button class="btn-shortlist" onclick="makeDecision('${s.id}', 'Shortlisted')">★ Shortlist</button>
+                            <button class="btn-reject" onclick="makeDecision('${s.id}', 'Rejected')">✕ Reject</button>
+                        </div>
+                    </div>
+                `;
             });
         }
 
         async function makeDecision(id, decision) {
-            // Send the decision to server
+            const card = document.getElementById(`card-${id}`);
+            
+            // Visual feedback before server response
+            if(decision === 'Shortlisted') card.className = 'student-card status-shortlisted';
+            else card.className = 'student-card status-rejected';
+
             await fetch('/process-decision', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, decision })
             });
-            loadResults(); // Refresh list (candidate will disappear from pending)
+
+            // Remove card with a small delay for the animation to be seen
+            setTimeout(() => {
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.9)';
+                setTimeout(fetchResults, 300);
+            }, 500);
         }
 
         function downloadExcel() {
-            // Trigger the file download from server
             window.location.href = '/download-excel';
         }
 
-        setInterval(loadResults, 2000);
-        loadResults();
+        // Listen for real-time updates (if a student finishes, they appear here)
+        socket.on('queueUpdated', fetchResults);
+
+        fetchResults();
     </script>
 </body>
 </html>

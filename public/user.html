@@ -5,6 +5,21 @@
     <title>Live Display</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        /* Compact search styling to fit your TV layout */
+        .user-search {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-main);
+            font-size: 0.8rem;
+            outline: none;
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -19,12 +34,18 @@
         <div class="tv-layout">
             
             <div class="active-grid-container">
-                <h3 style="color:var(--text-muted); margin-bottom:1rem; text-transform:uppercase; letter-spacing:1px;">🟢 Now Interviewing</h3>
+                <div style="display: flex; flex-direction: column; margin-bottom: 1rem;">
+                    <h3 style="color:var(--text-muted); margin:0; text-transform:uppercase; letter-spacing:1px;">🟢 Now Interviewing</h3>
+                    <input type="text" id="searchInterviewing" onkeyup="filterUserList('nowServingGrid', 'searchInterviewing')" placeholder="🔍 Search active interviews" class="user-search">
+                </div>
                 <div id="nowServingGrid" class="now-serving-grid"></div>
             </div>
 
             <div class="queue-list">
-                <div class="queue-header">⏳ Up Next</div>
+                <div class="queue-header" style="display: flex; flex-direction: column; gap: 8px; height: auto; padding-bottom: 15px;">
+                    <span style="font-size: 1.4rem;">⏳ Up Next</span>
+                    <input type="text" id="searchNext" onkeyup="filterUserList('upNextList', 'searchNext')" placeholder="🔍 Search interview queue" class="user-search">
+                </div>
                 <div id="upNextList" style="overflow-y:auto; flex:1;"></div>
             </div>
 
@@ -44,7 +65,7 @@
             document.getElementById('clock').innerText = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
         }, 1000);
 
-        // DATA FETCH LOOP (New Design Logic)
+        // DATA FETCH LOOP
         async function fetchUpdates() {
             try {
                 // 1. Get Company Name
@@ -61,36 +82,26 @@
                 const grid = document.getElementById('nowServingGrid');
                 const list = document.getElementById('upNextList');
 
-                // Case Insensitive Filtering
                 const interviewing = data.filter(s => s.status && s.status.toLowerCase() === 'interviewing');
                 const waiting = data.filter(s => s.status && s.status.toLowerCase() === 'waiting');
 
-                // --- RENDER GRID (NEW CARD DESIGN) ---
+                // RENDER GRID
                 grid.innerHTML = '';
-                
                 if(interviewing.length === 0) {
                     grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:4rem; color:var(--text-muted); border: 2px dashed var(--border); border-radius: 12px;">
-                        <div style="font-size: 2rem; margin-bottom: 10px;">☕</div>
-                        No Active Interviews
-                    </div>`;
-                } 
-                else {
+                        <div style="font-size: 2rem; margin-bottom: 10px;">☕</div>No Active Interviews</div>`;
+                } else {
                     interviewing.forEach(s => {
                         const displayName = s.name || "Unknown";
                         const initials = displayName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
-                        
-                        // New Timeline Logic
                         const currentRoom = s.path[s.currentStep];
                         const nextStep = s.path[s.currentStep + 1];
                         const totalRounds = s.path.length;
                         const currentRoundNum = s.currentStep + 1;
-                        
-                        // Calculate Progress Bar Width
                         const progressPercent = (currentRoundNum / totalRounds) * 100;
 
                         grid.innerHTML += `
                             <div class="now-serving-card pulsing" style="padding: 1.5rem; text-align: left; display: block;">
-                                
                                 <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 1.5rem;">
                                     <div class="avatar-circle" style="width: 50px; height: 50px; font-size: 1.2rem; margin:0;">${initials}</div>
                                     <div>
@@ -98,28 +109,24 @@
                                         <div class="now-name" style="margin: 0; font-size: 1.4rem; color: var(--text-main); line-height: 1.2;">${displayName}</div>
                                     </div>
                                 </div>
-
                                 <div style="background: var(--bg-main); padding: 1.5rem; border-radius: 12px; text-align: center; margin-bottom: 1.5rem; border: 1px solid var(--border);">
                                     <div style="font-size: 0.75rem; color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Currently Inside</div>
                                     <div style="font-size: 2rem; font-weight: 800; color: var(--primary);">${currentRoom}</div>
                                 </div>
-
                                 <div>
                                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-muted);">
                                         <span>Round ${currentRoundNum} of ${totalRounds}</span>
                                         <span>${nextStep ? 'Next: <b>' + nextStep + '</b>' : '<b style="color:var(--success)">Final Round</b>'}</span>
                                     </div>
-                                    
                                     <div style="height: 8px; width: 100%; background: #e2e8f0; border-radius: 10px; overflow: hidden;">
                                         <div style="height: 100%; width: ${progressPercent}%; background: var(--success); border-radius: 10px; transition: width 0.5s ease;"></div>
                                     </div>
                                 </div>
-
                             </div>`;
                     });
                 }
 
-                // --- RENDER LIST (Waiting) ---
+                // RENDER LIST
                 list.innerHTML = '';
                 if(waiting.length === 0) {
                      list.innerHTML = `<div style="padding:2rem; text-align:center; color:var(--text-muted);">Queue is empty</div>`;
@@ -136,12 +143,66 @@
                     });
                 }
 
+                // --- RE-APPLY FILTERS AFTER RENDER ---
+                filterUserList('nowServingGrid', 'searchInterviewing');
+                filterUserList('upNextList', 'searchNext');
+
             } catch (err) {
                 console.error("Connection Error:", err);
             }
         }
-        setInterval(fetchUpdates, 2000);
+
+        const socket = io();
+        socket.on('queueUpdated', () => {
+            fetchUpdates(); 
+        });
+
         fetchUpdates();
+
+        // Filter Function correctly mapped to your card classes
+        function filterUserList(listId, searchId) {
+    const searchInput = document.getElementById(searchId);
+    if (!searchInput) return;
+    
+    const query = searchInput.value.toLowerCase().trim();
+    const container = document.getElementById(listId);
+    
+    // Target both grid cards and list items
+    const cards = container.querySelectorAll('.now-serving-card, .queue-item');
+    let matchCount = 0;
+
+    cards.forEach(card => {
+        const nameElement = card.querySelector('.now-name') || card.querySelector('.queue-name');
+        if (nameElement) {
+            const name = nameElement.textContent.toLowerCase();
+            
+            // Check if the query exists anywhere inside the name
+            if (name.includes(query)) {
+                card.style.display = "";
+                matchCount++;
+            } else {
+                card.style.display = "none";
+            }
+        }
+    });
+
+    // Remove any existing "No matches" alert first to avoid duplicates
+    const existingAlert = container.querySelector('.no-results-alert');
+    if (existingAlert) existingAlert.remove();
+
+    // Only show the alert if: 
+    // 1. There is actually text in the search box
+    // 2. ABSOLUTELY zero cards matched that text
+    if (query !== "" && matchCount === 0) {
+        const noResultMsg = document.createElement('div');
+        noResultMsg.className = 'no-results-alert';
+        noResultMsg.innerHTML = `
+            <div style="text-align:center; padding:2rem; color:var(--text-muted); font-style:italic; border: 1px dashed var(--border); border-radius:12px; margin-top: 10px;">
+                🔍 No matches found for "${searchInput.value}"
+            </div>`;
+        container.appendChild(noResultMsg);
+    }
+}
     </script>
 </body>
 </html>
