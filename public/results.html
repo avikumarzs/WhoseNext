@@ -80,67 +80,88 @@
             </div>
         </div>
 
-        <div id="resultsGrid" class="decision-grid">
-            </div>
+        <div id="resultsGrid" class="decision-grid"></div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
+        // --- 1. THEME INITIALIZER (Immediate execution to prevent flash) ---
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+            }
+        })();
+
+        // Update icon once DOM is loaded
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme');
+            const toggleBtn = document.querySelector('.theme-toggle');
+            if (savedTheme === 'dark' && toggleBtn) {
+                toggleBtn.innerText = '☀️';
+            }
+        });
+
         const socket = io();
 
-        // THEME TOGGLE
+        // --- 2. THEME TOGGLE FUNCTION ---
         function toggleTheme() {
             document.body.classList.toggle('dark-mode');
-            const icon = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+            const isDark = document.body.classList.contains('dark-mode');
+            
+            // Save preference to localStorage
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            
+            // Update icon
+            const icon = isDark ? '☀️' : '🌙';
             document.querySelector('.theme-toggle').innerText = icon;
-            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
         }
 
-        // Apply saved theme on load
-        if (localStorage.getItem('theme') === 'dark') {
-            document.body.classList.add('dark-mode');
-            document.querySelector('.theme-toggle').innerText = '☀️';
-        }
-
+        // --- 3. DATA FETCHING ---
         async function fetchResults() {
-            const res = await fetch('/get-results');
-            const students = await res.json();
-            const grid = document.getElementById('resultsGrid');
-            document.getElementById('pendingCount').innerText = students.length;
+            try {
+                const res = await fetch('/get-results');
+                const students = await res.json();
+                const grid = document.getElementById('resultsGrid');
+                document.getElementById('pendingCount').innerText = students.length;
 
-            grid.innerHTML = '';
+                grid.innerHTML = '';
 
-            if (students.length === 0) {
-                grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:5rem; color:var(--text-muted); border: 2px dashed var(--border); border-radius:12px;">
-                    <h3>All caught up!</h3>
-                    <p>No candidates are currently awaiting a decision.</p>
-                </div>`;
-                return;
+                if (students.length === 0) {
+                    grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:5rem; color:var(--text-muted); border: 2px dashed var(--border); border-radius:12px;">
+                        <h3>All caught up!</h3>
+                        <p>No candidates are currently awaiting a decision.</p>
+                    </div>`;
+                    return;
+                }
+
+                students.forEach(s => {
+                    const initials = s.name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+                    
+                    grid.innerHTML += `
+                        <div class="student-card" id="card-${s.id}">
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 1rem;">
+                                <div class="avatar-circle" style="width:40px; height:40px; margin:0; font-size:0.9rem;">${initials}</div>
+                                <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-main);">${s.name}</div>
+                            </div>
+                            
+                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                                <b>Path Taken:</b> ${s.path.join(' ➔ ')}
+                            </div>
+
+                            <div class="decision-actions">
+                                <button class="btn-shortlist" onclick="makeDecision('${s.id}', 'Shortlisted')">★ Shortlist</button>
+                                <button class="btn-reject" onclick="makeDecision('${s.id}', 'Rejected')">✕ Reject</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (err) {
+                console.error("Fetch error:", err);
             }
-
-            students.forEach(s => {
-                const initials = s.name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
-                
-                grid.innerHTML += `
-                    <div class="student-card" id="card-${s.id}">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 1rem;">
-                            <div class="avatar-circle" style="width:40px; height:40px; margin:0; font-size:0.9rem;">${initials}</div>
-                            <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-main);">${s.name}</div>
-                        </div>
-                        
-                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-                            <b>Path Taken:</b> ${s.path.join(' ➔ ')}
-                        </div>
-
-                        <div class="decision-actions">
-                            <button class="btn-shortlist" onclick="makeDecision('${s.id}', 'Shortlisted')">★ Shortlist</button>
-                            <button class="btn-reject" onclick="makeDecision('${s.id}', 'Rejected')">✕ Reject</button>
-                        </div>
-                    </div>
-                `;
-            });
         }
 
+        // --- 4. DECISION PROCESSING ---
         async function makeDecision(id, decision) {
             const card = document.getElementById(`card-${id}`);
             
@@ -166,9 +187,8 @@
             window.location.href = '/download-excel';
         }
 
-        // Listen for real-time updates (if a student finishes, they appear here)
+        // --- 5. INITIALIZE & SOCKET ---
         socket.on('queueUpdated', fetchResults);
-
         fetchResults();
     </script>
 </body>
