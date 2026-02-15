@@ -105,6 +105,7 @@ app.get('/download-excel', (req, res) => {
     const dataForExcel = masterDatabase.map(s => ({
         "Candidate Name": s.name,
         "Room / Path": s.path.join(' -> '),
+        "Current Status": s.status,
         "Selection Decision": s.decision
     }));
     const workSheet = XLSX.utils.json_to_sheet(dataForExcel);
