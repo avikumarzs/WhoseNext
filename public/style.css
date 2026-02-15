@@ -54,7 +54,21 @@ header h1 { font-size: 1.25rem; font-weight: 800; color: var(--text-main); lette
 
 /* LAYOUTS */
 .dashboard-container { display: flex; flex: 1; height: calc(100vh - 70px); }
-.sidebar { width: 320px; background: var(--surface); border-right: 1px solid var(--border); padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
+/* --- SIDEBAR FIX --- */
+.sidebar { 
+    width: 320px; 
+    background: var(--surface); 
+    border-right: 1px solid var(--border); 
+    padding: 2rem; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 1.5rem; 
+    
+    /* CRITICAL FIXES FOR SCROLLING */
+    height: 100%;            /* Fill the vertical space */
+    overflow-y: auto;        /* Force scrollbar if content is too long */
+    min-width: 320px;        /* Prevent shrinking */
+}
 .main-content { flex: 1; padding: 1.5rem; overflow-y: auto; background: var(--bg-main); }
 
 /* INPUTS & BUTTONS */
@@ -90,7 +104,15 @@ header h1 { font-size: 1.25rem; font-weight: 800; color: var(--text-main); lette
     display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;
 }
 .now-label { font-size: 0.7rem; font-weight: 800; color: var(--success); background: var(--success-bg); padding: 4px 10px; border-radius: 20px; margin-bottom: 0.8rem; }
-.now-name { font-size: 1.6rem; font-weight: 800; color: var(--text-main); margin-bottom: 1.2rem; }
+/* Ensure this is in your style.css */
+.now-name {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--text-main); /* This variable must exist */
+    margin-bottom: 1.25rem;
+    line-height: 1.1;
+    word-break: break-word;
+}
 
 /* BUBBLES */
 .path-display { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; }

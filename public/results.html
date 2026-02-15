@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Selection Board</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>📋 Selection Board</h1>
+        <button onclick="downloadExcel()" class="btn-primary" style="width: auto; background: #10b981; border:none;">
+            📥 Download Final Report
+        </button>
+    </header>
+
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <h3 style="color:var(--text-muted); text-transform:uppercase; font-size:0.8rem; margin-bottom:1rem;">Navigation</h3>
+            <a href="admin.html" class="btn-primary" style="text-decoration:none; display:block; text-align:center; background:var(--surface); color:var(--text-main); border:1px solid #e2e8f0; margin-bottom: 2rem;">
+                ⬅ Back to Queue
+            </a>
+            
+            <div style="padding:1.5rem; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; color:#166534;">
+                <strong>Instructions:</strong><br>
+                <span style="font-size:0.9rem;">
+                1. Candidates appear here after "Finish".<br>
+                2. Mark Shortlist/Reject.<br>
+                3. Click <b>Download Final Report</b> to get the Excel sheet.
+                </span>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <h2 style="margin-bottom: 1rem; color: var(--text-main);">Pending Decisions</h2>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Candidate Name</th>
+                        <th>Path Taken</th>
+                        <th style="text-align: right;">Decision</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsList"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function loadResults() {
+            const res = await fetch('/get-results');
+            const data = await res.json();
+            const list = document.getElementById('resultsList');
+            list.innerHTML = '';
+
+            if(data.length === 0) {
+                list.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:3rem; color:#94a3b8;">No pending candidates.<br><span style="font-size:0.8rem">Finish an interview in the Admin Panel to see them here.</span></td></tr>';
+                return;
+            }
+
+            data.forEach(s => {
+                list.innerHTML += `
+                    <tr>
+                        <td style="font-weight:700; font-size:1.1rem;">${s.name}</td>
+                        <td style="color:var(--text-muted);">${s.path.join(' → ')}</td>
+                        <td style="text-align: right;">
+                            <button onclick="makeDecision(${s.id}, 'Shortlisted')" style="background:#16a34a; color:white; padding:8px 16px; margin-right:10px; border-radius:6px; border:none; cursor:pointer;">
+                                ★ Shortlist
+                            </button>
+                            <button onclick="makeDecision(${s.id}, 'Rejected')" style="background:#dc2626; color:white; padding:8px 16px; border-radius:6px; border:none; cursor:pointer;">
+                                ✕ Reject
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        async function makeDecision(id, decision) {
+            // Send the decision to server
+            await fetch('/process-decision', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, decision })
+            });
+            loadResults(); // Refresh list (candidate will disappear from pending)
+        }
+
+        function downloadExcel() {
+            // Trigger the file download from server
+            window.location.href = '/download-excel';
+        }
+
+        setInterval(loadResults, 2000);
+        loadResults();
+    </script>
+</body>
+</html>
