@@ -2,98 +2,151 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Live Display</title>
+    <title>Live Display - TV Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        .user-search {
+        /* --- TV Dashboard Specific Layout --- */
+        body { overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+        
+        .main-content { 
+            flex: 1; 
+            padding: 20px; 
+            display: grid; 
+            grid-template-columns: 1fr 380px; 
+            gap: 25px;
+            overflow: hidden;
+        }
+
+        .active-section {
+            background: var(--surface);
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+
+        .queue-section {
+            background: var(--bg-main);
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex: 1;
+            justify-content: flex-end;
+        }
+
+        .global-search {
             width: 100%;
-            padding: 8px 12px;
-            border-radius: 8px;
+            max-width: 450px;
+            padding: 12px 25px;
+            border-radius: 50px;
             border: 1px solid var(--border);
             background: var(--surface);
             color: var(--text-main);
-            font-size: 0.8rem;
+            font-size: 0.95rem;
             outline: none;
-            margin-top: 10px;
+            transition: 0.3s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
         }
+
+        #nowServingGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        #upNextList {
+            overflow-y: auto;
+            flex: 1;
+            padding-right: 5px;
+        }
+
+        #clock { font-size: 1.2rem; font-weight: 800; color: var(--accent); min-width: 100px; text-align: right; }
     </style>
 </head>
 <body>
     <header>
-        <h1 id="headerTitle">🎓 PLACEMENT DRIVE</h1>
-        <div style="display:flex; align-items:center; gap:15px;">
-            <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
-            <div style="font-weight:600; color:var(--text-muted);" id="clock">12:00</div>
+        <h1 id="headerTitle" style="white-space: nowrap;">🎓 PLACEMENT DRIVE</h1>
+        <div class="header-controls">
+            <input type="text" id="globalSearch" onkeyup="globalFilter()" placeholder="🔍 Search name or room..." class="global-search">
+            <button class="theme-toggle" onclick="toggleTheme()" style="font-size: 1.5rem; background:none; border:none; cursor:pointer;">🌙</button>
+            <div id="clock">12:00</div>
         </div>
     </header>
 
     <div class="main-content">
-        <div class="tv-layout">
-            <div class="active-grid-container">
-                <div style="display: flex; flex-direction: column; margin-bottom: 1rem;">
-                    <h3 style="color:var(--text-muted); margin:0; text-transform:uppercase; letter-spacing:1px;">🟢 Now Interviewing</h3>
-                    <input type="text" id="searchInterviewing" onkeyup="filterUserList('nowServingGrid', 'searchInterviewing')" placeholder="🔍 Search active interviews" class="user-search">
-                </div>
-                <div id="nowServingGrid" class="now-serving-grid"></div>
+        <div class="active-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="color:var(--text-muted); margin:0; text-transform:uppercase; letter-spacing:2px; font-size: 0.9rem;">🟢 Now Interviewing</h3>
+                <span id="activeCountBadge" style="background: var(--accent); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">0 Active</span>
             </div>
+            <div id="nowServingGrid"></div>
+        </div>
 
-            <div class="queue-list">
-                <div class="queue-header" style="display: flex; flex-direction: column; gap: 8px; height: auto; padding-bottom: 15px;">
-                    <span style="font-size: 1.4rem;">⏳ Up Next</span>
-                    <input type="text" id="searchNext" onkeyup="filterUserList('upNextList', 'searchNext')" placeholder="🔍 Search interview queue" class="user-search">
-                </div>
-                <div id="upNextList" style="overflow-y:auto; flex:1;"></div>
-            </div>
+        <div class="queue-section">
+            <h3 style="color:var(--text-muted); margin:0 0 20px 0; text-transform:uppercase; letter-spacing:2px; font-size: 0.9rem;">⏳ Up Next</h3>
+            <div id="upNextList"></div>
         </div>
     </div>
 
     <script>
-        // --- 1. THEME INITIALIZER (Runs instantly on load) ---
         (function() {
             const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') {
-                document.body.classList.add('dark-mode');
-            }
+            if (savedTheme === 'dark') document.body.classList.add('dark-mode');
         })();
 
-        // Apply correct icon once the DOM is ready
         window.addEventListener('DOMContentLoaded', () => {
             const savedTheme = localStorage.getItem('theme');
             const toggleBtn = document.querySelector('.theme-toggle');
-            if (savedTheme === 'dark' && toggleBtn) {
-                toggleBtn.innerText = '☀️';
-            }
+            if (savedTheme === 'dark' && toggleBtn) toggleBtn.innerText = '☀️';
         });
 
-        // --- 2. THEME TOGGLE (Saves to Memory) ---
         function toggleTheme() {
             document.body.classList.toggle('dark-mode');
             const isDark = document.body.classList.contains('dark-mode');
-            
-            // Save preference
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            
-            // Update icon
-            const icon = isDark ? '☀️' : '🌙';
-            document.querySelector('.theme-toggle').innerText = icon;
+            document.querySelector('.theme-toggle').innerText = isDark ? '☀️' : '🌙';
         }
 
-        // --- 3. CLOCK ---
         setInterval(() => {
             document.getElementById('clock').innerText = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
         }, 1000);
 
-        // --- 4. DATA FETCH LOOP ---
+        function globalFilter() {
+            const query = document.getElementById('globalSearch').value.toLowerCase().trim();
+            const cards = document.querySelectorAll('.now-serving-card, .queue-item');
+            cards.forEach(card => {
+                const nameElement = (card.querySelector('.now-name') || card.querySelector('.queue-name'));
+                if (!nameElement) return;
+                const name = nameElement.textContent.toLowerCase();
+                const roomInfo = card.innerText.toLowerCase();
+                card.style.display = (name.includes(query) || roomInfo.includes(query)) ? "" : "none";
+            });
+        }
+
         async function fetchUpdates() {
             try {
+                // 1. Get Company Name
                 try {
                     const metaRes = await fetch('/get-company');
                     const metaData = await metaRes.json();
                     document.getElementById('headerTitle').innerText = `🎓 ${metaData.company}`;
                 } catch(e) { }
 
+                // 2. Get Queue Data
                 const res = await fetch('/get-queue');
                 const data = await res.json();
                 
@@ -103,10 +156,13 @@
                 const interviewing = data.filter(s => s.status && s.status.toLowerCase() === 'interviewing');
                 const waiting = data.filter(s => s.status && s.status.toLowerCase() === 'waiting');
 
+                document.getElementById('activeCountBadge').innerText = `${interviewing.length} Active`;
+
+                // --- RENDER ACTIVE GRID ---
                 grid.innerHTML = '';
                 if(interviewing.length === 0) {
-                    grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:4rem; color:var(--text-muted); border: 2px dashed var(--border); border-radius: 12px;">
-                        <div style="font-size: 2rem; margin-bottom: 10px;">☕</div>No Active Interviews</div>`;
+                    grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:5rem; color:var(--text-muted); opacity: 0.5;">
+                        <div style="font-size: 3rem; margin-bottom: 10px;">☕</div>No Active Interviews</div>`;
                 } else {
                     interviewing.forEach(s => {
                         const displayName = s.name || "Unknown";
@@ -118,95 +174,63 @@
                         const progressPercent = (currentRoundNum / totalRounds) * 100;
 
                         grid.innerHTML += `
-                            <div class="now-serving-card pulsing" style="padding: 1.5rem; text-align: left; display: block;">
+                            <div class="now-serving-card pulsing">
                                 <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 1.5rem;">
-                                    <div class="avatar-circle" style="width: 50px; height: 50px; font-size: 1.2rem; margin:0;">${initials}</div>
+                                    <div class="avatar-circle" style="width: 50px; height: 50px; font-size: 1.2rem; margin:0; background: var(--accent); color:white; border:none;">${initials}</div>
                                     <div>
-                                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 1px;">Candidate</div>
-                                        <div class="now-name" style="margin: 0; font-size: 1.4rem; color: var(--text-main); line-height: 1.2;">${displayName}</div>
+                                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 1px;">Candidate</div>
+                                        <div class="now-name" style="margin: 0; font-size: 1.3rem; color: var(--text-main); font-weight: 800; line-height: 1.2;">${displayName}</div>
                                     </div>
                                 </div>
-                                <div style="background: var(--bg-main); padding: 1.5rem; border-radius: 12px; text-align: center; margin-bottom: 1.5rem; border: 1px solid var(--border);">
-                                    <div style="font-size: 0.75rem; color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Currently Inside</div>
-                                    <div style="font-size: 2rem; font-weight: 800; color: var(--primary);">${currentRoom}</div>
+                                <div style="background: var(--bg-main); padding: 1.2rem; border-radius: 16px; text-align: center; margin-bottom: 1.5rem; border: 1px solid var(--border);">
+                                    <div style="font-size: 0.7rem; color: var(--accent); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Currently At</div>
+                                    <div style="font-size: 1.8rem; font-weight: 900; color: var(--text-main);">${currentRoom}</div>
                                 </div>
                                 <div>
-                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-muted);">
-                                        <span>Round ${currentRoundNum} of ${totalRounds}</span>
-                                        <span>${nextStep ? 'Next: <b>' + nextStep + '</b>' : '<b style="color:var(--success)">Final Round</b>'}</span>
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); font-weight:600;">
+                                        <span>Step ${currentRoundNum} of ${totalRounds}</span>
+                                        <span>${nextStep ? 'Next: ' + nextStep : 'Final Round'}</span>
                                     </div>
-                                    <div style="height: 8px; width: 100%; background: #e2e8f0; border-radius: 10px; overflow: hidden;">
-                                        <div style="height: 100%; width: ${progressPercent}%; background: var(--success); border-radius: 10px; transition: width 0.5s ease;"></div>
+                                    <div style="height: 6px; width: 100%; background: rgba(0,0,0,0.05); border-radius: 10px; overflow: hidden;">
+                                        <div style="height: 100%; width: ${progressPercent}%; background: var(--success); transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);"></div>
                                     </div>
                                 </div>
                             </div>`;
                     });
                 }
 
-                list.innerHTML = '';
+                // --- RENDER SIDEBAR LIST (FIXED LOGIC) ---
+                list.innerHTML = ''; // 1. CRITICAL FIX: Clear the list entirely before starting
+                
                 if(waiting.length === 0) {
-                     list.innerHTML = `<div style="padding:2rem; text-align:center; color:var(--text-muted);">Queue is empty</div>`;
+                    list.innerHTML = `<div style="padding:2rem; text-align:center; color:var(--text-muted); opacity:0.5;">Queue is clear</div>`;
                 } else {
                     waiting.forEach((s, i) => {
                         list.innerHTML += `
-                            <div class="queue-item">
-                                <div>
-                                    <div style="font-size:0.7rem; font-weight:800; color:var(--text-muted);">TOKEN #${i+1}</div>
-                                    <div class="queue-name">${s.name}</div>
+                            <div class="queue-item" style="margin-bottom: 12px; padding: 18px; border-radius: 16px; border-left: 5px solid var(--accent);">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-size:0.7rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">TOKEN #${i+1}</div>
+                                        <div class="queue-name" style="font-weight: 800; font-size: 1.1rem; color: var(--text-main);">${s.name}</div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 1.4rem; font-weight: 900; color: var(--accent);">${s.path[s.currentStep]}</div>
+                                        <div style="font-size:0.6rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Next Room</div>
+                                    </div>
                                 </div>
-                                <div style="font-weight:600; color:var(--accent);">Go to: ${s.path[s.currentStep]}</div>
                             </div>`;
                     });
                 }
 
-                filterUserList('nowServingGrid', 'searchInterviewing');
-                filterUserList('upNextList', 'searchNext');
-
+                globalFilter();
             } catch (err) {
-                console.error("Connection Error:", err);
+                console.error("Fetch Error:", err);
             }
         }
 
         const socket = io();
         socket.on('queueUpdated', () => { fetchUpdates(); });
-
         fetchUpdates();
-
-        // --- 5. SEARCH FILTER LOGIC ---
-        function filterUserList(listId, searchId) {
-            const searchInput = document.getElementById(searchId);
-            if (!searchInput) return;
-            const query = searchInput.value.toLowerCase().trim();
-            const container = document.getElementById(listId);
-            const cards = container.querySelectorAll('.now-serving-card, .queue-item');
-            let matchCount = 0;
-
-            cards.forEach(card => {
-                const nameElement = card.querySelector('.now-name') || card.querySelector('.queue-name');
-                if (nameElement) {
-                    const name = nameElement.textContent.toLowerCase();
-                    if (name.includes(query)) {
-                        card.style.display = "";
-                        matchCount++;
-                    } else {
-                        card.style.display = "none";
-                    }
-                }
-            });
-
-            const existingAlert = container.querySelector('.no-results-alert');
-            if (existingAlert) existingAlert.remove();
-
-            if (query !== "" && matchCount === 0) {
-                const noResultMsg = document.createElement('div');
-                noResultMsg.className = 'no-results-alert';
-                noResultMsg.innerHTML = `
-                    <div style="text-align:center; padding:2rem; color:var(--text-muted); font-style:italic; border: 1px dashed var(--border); border-radius:12px; margin-top: 10px;">
-                        🔍 No matches found for "${searchInput.value}"
-                    </div>`;
-                container.appendChild(noResultMsg);
-            }
-        }
     </script>
 </body>
 </html>

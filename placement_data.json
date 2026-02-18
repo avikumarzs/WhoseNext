@@ -1,5 +1,43 @@
 {
-  "placementQueue": [],
-  "masterDatabase": [],
-  "companyName": "PLACEMENT DRIVE 2026"
+  "queue": [
+    {
+      "id": "1771411244738",
+      "name": "user1",
+      "path": [
+        "093",
+        "596",
+        "012"
+      ],
+      "currentStep": 1,
+      "status": "waiting",
+      "history": [
+        {
+          "room": "093",
+          "result": "Selected"
+        }
+      ],
+      "finalVerdict": "Pending"
+    }
+  ],
+  "master": [
+    {
+      "id": "1771411244738",
+      "name": "user1",
+      "path": [
+        "093",
+        "596",
+        "012"
+      ],
+      "currentStep": 1,
+      "status": "waiting",
+      "history": [
+        {
+          "room": "093",
+          "result": "Selected"
+        }
+      ],
+      "finalVerdict": "Pending"
+    }
+  ],
+  "company": "Placement Drive"
 }

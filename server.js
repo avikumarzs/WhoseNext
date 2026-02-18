@@ -1,199 +1,211 @@
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
-const XLSX = require('xlsx');
+const socketIo = require('socket.io');
 const fs = require('fs');
-
+const xlsx = require('xlsx');
+const path = require('path'); // 1. Added path module
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = socketIo(server);
 
-const DATA_FILE = './placement_data.json';
+const DATA_FILE = 'placement_data.json';
 
+// --- DATA STORE ---
+let placementQueue = [];   // Candidates currently in the process
+let masterDatabase = [];   // All candidates history
+let companyName = "Placement Drive";
+
+app.use(express.static('public'));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
-// --- PERSISTENCE LOGIC ---
+// --- 2. FIX FOR "Cannot GET /" ---
+// This tells the server: "When user visits /, show them user.html"
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'user.html'));
+});
 
-const saveData = () => {
+// This makes accessing admin easier (http://localhost:3001/admin)
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// --- PERSISTENCE ---
+if (fs.existsSync(DATA_FILE)) {
     try {
-        const data = { placementQueue, masterDatabase, companyName };
-        fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+        const raw = fs.readFileSync(DATA_FILE);
+        const data = JSON.parse(raw);
+        placementQueue = data.queue || [];
+        masterDatabase = data.master || [];
+        companyName = data.company || "Placement Drive";
     } catch (err) {
-        console.error("❌ Failed to save data:", err);
+        console.error("Error loading data:", err);
     }
-};
+}
 
-const loadData = () => {
-    if (fs.existsSync(DATA_FILE)) {
-        try {
-            const rawData = fs.readFileSync(DATA_FILE);
-            return JSON.parse(rawData);
-        } catch (err) {
-            console.error("❌ Failed to load data:", err);
-            return null;
-        }
-    }
-    return null;
-};
+function saveData() {
+    const payload = { queue: placementQueue, master: masterDatabase, company: companyName };
+    fs.writeFileSync(DATA_FILE, JSON.stringify(payload, null, 2));
+}
 
-// --- INITIALIZE DATA (Corrected Logic) ---
-const savedState = loadData();
+// --- ROUTES ---
 
-let placementQueue = savedState ? savedState.placementQueue : [];
-let masterDatabase = savedState ? savedState.masterDatabase : []; 
-let companyName = savedState ? savedState.companyName : "PLACEMENT DRIVE 2026";
+app.get('/get-queue', (req, res) => res.json(placementQueue));
+app.get('/get-company', (req, res) => res.json({ company: companyName }));
 
-if (savedState) console.log("💾 Persistent storage loaded successfully.");
-
-// --- PAGE ROUTES ---
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'user.html')));
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
-app.get('/results', (req, res) => res.sendFile(path.join(__dirname, 'public', 'results.html')));
-// --- API ROUTES ---
-
-app.post('/set-company', (req, res) => { 
-    companyName = req.body.company; 
-    saveData(); // Save change
+app.post('/set-company', (req, res) => {
+    companyName = req.body.company;
+    saveData();
     io.emit('queueUpdated');
-    res.json({ message: "Updated" }); 
-});
-
-app.get('/get-company', (req, res) => { 
-    res.json({ company: companyName }); 
-});
-
-app.get('/get-queue', (req, res) => { 
-    res.json(placementQueue); 
+    res.json({ message: "Updated" });
 });
 
 app.post('/add-student', (req, res) => {
-    const name = req.body.name || "Unknown Candidate"; 
-    const room = req.body.room || "Waiting Area";
+    const { name, room } = req.body;
+    let pathArray = room.includes(',') ? room.split(',').map(s => s.trim()) : [room.trim()];
     
-    let pathArray = [];
-    if (room.includes('➜')) pathArray = room.split('➜').map(s => s.trim());
-    else if (room.includes(',')) pathArray = room.split(',').map(s => s.trim());
-    else pathArray = [room.trim()];
-
-    const newStudent = { 
-        name, 
-        path: pathArray, 
-        currentStep: 0, 
+    const newStudent = {
+        id: Date.now().toString(),
+        name: name.trim(),
+        path: pathArray,
+        currentStep: 0,
         status: 'waiting', 
-        decision: 'Pending',
-        id: Date.now() 
+        history: [],       
+        finalVerdict: 'Pending' 
     };
 
     placementQueue.push(newStudent);
     masterDatabase.push(newStudent);
-    
-    saveData(); // Save change
+    saveData();
     io.emit('queueUpdated');
     res.json({ message: "Added" });
 });
 
-app.post('/update-status', (req, res) => {
-    const { index, action } = req.body;
+app.post('/edit-student', (req, res) => {
+    const { index, newPath } = req.body;
     const student = placementQueue[index];
-
     if (student) {
-        const masterRecord = masterDatabase.find(s => s.id === student.id);
+        let pathArray = [];
+        if (newPath.includes(',')) pathArray = newPath.split(',').map(s => s.trim());
+        else pathArray = [newPath.trim()];
 
-        if (action === 'call') {
-            student.status = 'Interviewing'; 
-            if(masterRecord) masterRecord.status = 'Interviewing';
-        } 
-        else if (action === 'next') {
-            student.currentStep++;
-            student.status = 'waiting';
-            if(masterRecord) masterRecord.status = 'Waiting';
-        } 
-        else if (action === 'finish') {
-            if(masterRecord) masterRecord.status = 'Finished';
-            placementQueue.splice(index, 1);
-        }
-        
-        saveData(); // Save change
+        student.path = pathArray;
+        // Sync master
+        const masterRecord = masterDatabase.find(s => s.id === student.id);
+        if (masterRecord) masterRecord.path = pathArray;
+
+        saveData();
         io.emit('queueUpdated');
+        res.json({ message: "Updated" });
+    } else {
+        res.status(404).json({ message: "Not found" });
     }
-    res.json({ message: "Updated" });
 });
 
 app.delete('/remove-student/:index', (req, res) => {
-    const student = placementQueue[req.params.index];
+    const index = req.params.index;
+    const student = placementQueue[index];
     if (student) {
         const masterRecord = masterDatabase.find(s => s.id === student.id);
-        if(masterRecord) {
-            masterRecord.status = 'Removed';
-            masterRecord.decision = 'Removed from Queue';
-        }
-        placementQueue.splice(req.params.index, 1);
-        saveData(); // Save change
+        if (masterRecord) masterRecord.finalVerdict = 'Removed by Admin';
+        placementQueue.splice(index, 1);
+        saveData();
         io.emit('queueUpdated');
     }
     res.json({ message: "Removed" });
 });
 
-app.get('/get-results', (req, res) => {
-    const pending = masterDatabase.filter(s => s.status === 'Finished' && s.decision === 'Pending');
-    res.json(pending);
-});
-
-app.post('/process-decision', (req, res) => {
-    const { id, decision } = req.body;
-
-    // FIX: Convert the incoming string ID to a Number
-    const student = masterDatabase.find(s => s.id === Number(id)); 
-    
-    if (student) {
-        student.decision = decision; 
-        saveData(); // Save the "Shortlisted" or "Rejected" status to the JSON file
-        
-        console.log(`✅ Decision updated for ${student.name}: ${decision}`);
-        
-        // Notify all pages (including the results page) to refresh
-        io.emit('queueUpdated'); 
-        res.json({ message: "Saved successfully" });
-    } else {
-        console.log(`❌ Could not find student with ID: ${id}`);
-        res.status(404).json({ message: "Student not found" });
-    }
-});
-
 app.post('/reset-all', (req, res) => {
     placementQueue = [];
     masterDatabase = [];
-    companyName = "PLACEMENT DRIVE 2026";
-    saveData(); // Overwrites the file with empty data
-    io.emit('queueUpdated'); // Clears all screens instantly
-    res.json({ message: "System Reset Successful" });
+    saveData();
+    io.emit('queueUpdated');
+    res.json({ message: "Reset" });
 });
 
+// --- CORE LOGIC: NON-KNOCKOUT SYSTEM ---
+app.post('/update-status', (req, res) => {
+    const { index, action } = req.body;
+    const student = placementQueue[index];
+    
+    if (!student) return res.status(404).json({ error: "Student not found" });
+
+    const currentRoom = student.path[student.currentStep] || "Unknown";
+
+    if (action === 'call') {
+        student.status = 'interviewing';
+    } 
+    else {
+        // ACTION IS EITHER 'pass' OR 'fail'
+        // Both actions now move the student FORWARD.
+        
+        const resultString = (action === 'pass') ? 'Selected' : 'Rejected';
+        
+        // 1. Record Result
+        student.history.push({ room: currentRoom, result: resultString });
+
+        // 2. Move to Next Round (Regardless of Pass/Fail)
+        if (student.currentStep < student.path.length - 1) {
+            student.currentStep++;
+            student.status = 'waiting'; 
+        } else {
+            // 3. If Last Round -> Finish
+            student.status = 'finished';
+            
+            // Auto-calculate final verdict: 
+            // If they were rejected in ANY round, Final Status = Rejected.
+            // If they were Selected in ALL rounds, Final Status = Selected.
+            const hasRejection = student.history.some(h => h.result === 'Rejected');
+            student.finalVerdict = hasRejection ? 'Rejected' : 'Selected';
+            
+            // Sync Master Record
+            const masterRecord = masterDatabase.find(s => s.id === student.id);
+            if(masterRecord) {
+                masterRecord.history = student.history;
+                masterRecord.finalVerdict = student.finalVerdict;
+            }
+
+            // Remove from Active Queue (Process Complete)
+            placementQueue.splice(index, 1);
+        }
+    }
+
+    saveData();
+    io.emit('queueUpdated');
+    res.json({ success: true });
+});
+
+// --- EXCEL REPORT ---
 app.get('/download-excel', (req, res) => {
-    const dataForExcel = masterDatabase.map(s => ({
-        "Candidate Name": s.name,
-        "Room / Path": s.path.join(' -> '),
-        "Final Status": s.status,
-        "Selection Decision": s.decision
-    }));
+    const excelData = masterDatabase.map((s, i) => {
+        let row = {
+            "ID": i + 1,
+            "Name": s.name,
+            "Path": s.path.join(' -> '),
+            "Final Status": s.finalVerdict || s.status
+        };
 
-    const workSheet = XLSX.utils.json_to_sheet(dataForExcel);
-    const workBook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workBook, workSheet, "Candidates");
+        s.history.forEach((round, index) => {
+            row[`Round ${index + 1}`] = `${round.room}: ${round.result}`;
+        });
 
-    const buffer = XLSX.write(workBook, { bookType: "xlsx", type: "buffer" });
-    res.setHeader('Content-Disposition', 'attachment; filename="Final_Placement_Report.xlsx"');
+        return row;
+    });
+
+    const wb = xlsx.utils.book_new();
+    const ws = xlsx.utils.json_to_sheet(excelData);
+    
+    // Auto-width columns
+    const wscols = [{wch: 5}, {wch: 20}, {wch: 30}, {wch: 15}, {wch: 25}, {wch: 25}, {wch: 25}];
+    ws['!cols'] = wscols;
+
+    xlsx.utils.book_append_sheet(wb, ws, "Placement Report");
+    const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Disposition', 'attachment; filename="Final_Report.xlsx"');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.send(buffer);
 });
 
 server.listen(3001, () => {
-    console.log("\n🚀 REAL-TIME PERSISTENT SERVER STARTED");
-    console.log("-----------------------------------------------");
-    console.log("📺 User Display:   http://localhost:3001/");
-    console.log("⚙️  Admin Panel:    http://localhost:3001/admin");
-    console.log("📋 Selection Brd:  http://localhost:3001/results");
-    console.log("-----------------------------------------------");
+    console.log('🚀 Server running at http://localhost:3001');
 });

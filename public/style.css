@@ -259,3 +259,61 @@ header h1 {
     color: var(--text-muted);
     font-weight: 500;
 }
+
+/* --- Modern Button Design --- */
+.btn-call, .btn-done, .btn-del, .btn-primary {
+    border-radius: 50px !important;
+    padding: 8px 18px !important;
+    font-size: 0.85rem !important;
+    font-weight: 700 !important;
+    transition: all 0.2s ease !important;
+    border: none !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.btn-call { background: #3498db; color: white; box-shadow: 0 4px 10px rgba(52, 152, 219, 0.2); }
+.btn-done { background: #2ecc71; color: white; box-shadow: 0 4px 10px rgba(46, 204, 113, 0.2); }
+.btn-del { background: #ff4757; color: white; box-shadow: 0 4px 10px rgba(255, 71, 87, 0.2); }
+
+button:hover { transform: translateY(-2px); filter: brightness(1.1); }
+button:active { transform: translateY(0); }
+
+/* --- TV Layout Improvements --- */
+.tv-container {
+    display: grid;
+    grid-template-columns: 1fr 350px; /* Main content + Sidebar queue */
+    gap: 20px;
+    height: calc(100vh - 120px);
+}
+
+.active-section {
+    background: var(--surface);
+    border-radius: 20px;
+    padding: 25px;
+    border: 1px solid var(--border);
+    overflow-y: auto;
+}
+
+.queue-section {
+    background: var(--bg-main);
+    border-radius: 20px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Single clean search bar */
+.global-search {
+    width: 100%;
+    max-width: 400px;
+    padding: 12px 20px;
+    border-radius: 50px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-main);
+    margin-bottom: 20px;
+}
