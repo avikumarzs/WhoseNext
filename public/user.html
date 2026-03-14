@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Live User Display</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="/socket.io/socket.io.js"></script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>">
+    <title>Live Dashboard</title>
     <style>
         /* --- TV Dashboard Specific Layout --- */
         body { overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
@@ -202,9 +203,13 @@
                 // --- RENDER SIDEBAR LIST (FIXED LOGIC) ---
                 list.innerHTML = ''; // 1. CRITICAL FIX: Clear the list entirely before starting
                 
-                if(waiting.length === 0) {
-                    list.innerHTML = `<div style="padding:2rem; text-align:center; color:var(--text-muted); opacity:0.5;">Queue is clear</div>`;
-                } else {
+                if (waiting.length === 0) {
+                        list.innerHTML = `
+                            <div class="empty-state">
+                                <div style="font-size: 40px;">☕</div>
+                                <p>All clear! No waiting students</p>
+                            </div>`;
+                    }else {
                     waiting.forEach((s, i) => {
                         list.innerHTML += `
                             <div class="queue-item" style="margin-bottom: 12px; padding: 18px; border-radius: 16px; border-left: 5px solid var(--accent);">

@@ -317,3 +317,32 @@ button:active { transform: translateY(0); }
     color: var(--text-main);
     margin-bottom: 20px;
 }
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.student-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Add an entrance animation for new cards */
+@keyframes fadeInSlide {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.new-entry {
+    animation: fadeInSlide 0.5s ease forwards;
+}
