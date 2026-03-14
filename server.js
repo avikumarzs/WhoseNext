@@ -1,99 +1,91 @@
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
-const fs = require('fs');
+const mongoose = require('mongoose');
 const xlsx = require('xlsx');
-const path = require('path'); // 1. Added path module
+const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-const DATA_FILE = 'placement_data.json';
+// --- 1. DATABASE CONNECTION ---
+// Replace the URI below with your actual connection string from MongoDB Atlas
+const MONGO_URI = process.env.MONGO_URI || "your_mongodb_atlas_connection_string_here";
 
-// --- DATA STORE ---
-let placementQueue = [];   // Candidates currently in the process
-let masterDatabase = [];   // All candidates history
-let companyName = "Placement Drive";
+mongoose.connect(MONGO_URI)
+    .then(() => console.log("✅ Connected to MongoDB Atlas"))
+    .catch(err => console.error("❌ MongoDB Connection Error:", err));
+
+// --- 2. DATA SCHEMAS ---
+const StudentSchema = new mongoose.Schema({
+    name: String,
+    path: [String],
+    currentStep: { type: Number, default: 0 },
+    status: { type: String, default: 'waiting' },
+    history: [{ room: String, result: String }],
+    finalVerdict: { type: String, default: 'Pending' }
+});
+
+const ConfigSchema = new mongoose.Schema({
+    companyName: { type: String, default: "Placement Drive" }
+});
+
+const Student = mongoose.model('Student', StudentSchema);
+const Config = mongoose.model('Config', ConfigSchema);
 
 app.use(express.static('public'));
 app.use(express.json());
 
-// --- 2. FIX FOR "Cannot GET /" ---
-// This tells the server: "When user visits /, show them user.html"
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'user.html'));
+// --- 3. PAGE ROUTES ---
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'user.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+
+// --- 4. API ROUTES (Database Driven) ---
+
+app.get('/get-queue', async (req, res) => {
+    // Only fetch students who haven't finished the process
+    const queue = await Student.find({ status: { $ne: 'finished' } });
+    res.json(queue);
 });
 
-// This makes accessing admin easier (http://localhost:3001/admin)
-app.get('/admin', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+app.get('/get-company', async (req, res) => {
+    let config = await Config.findOne();
+    if (!config) config = await Config.create({ companyName: "Placement Drive" });
+    res.json({ company: config.companyName });
 });
 
-// --- PERSISTENCE ---
-if (fs.existsSync(DATA_FILE)) {
-    try {
-        const raw = fs.readFileSync(DATA_FILE);
-        const data = JSON.parse(raw);
-        placementQueue = data.queue || [];
-        masterDatabase = data.master || [];
-        companyName = data.company || "Placement Drive";
-    } catch (err) {
-        console.error("Error loading data:", err);
-    }
-}
-
-function saveData() {
-    const payload = { queue: placementQueue, master: masterDatabase, company: companyName };
-    fs.writeFileSync(DATA_FILE, JSON.stringify(payload, null, 2));
-}
-
-// --- ROUTES ---
-
-app.get('/get-queue', (req, res) => res.json(placementQueue));
-app.get('/get-company', (req, res) => res.json({ company: companyName }));
-
-app.post('/set-company', (req, res) => {
-    companyName = req.body.company;
-    saveData();
+app.post('/set-company', async (req, res) => {
+    const { company } = req.body;
+    await Config.findOneAndUpdate({}, { companyName: company }, { upsert: true });
     io.emit('queueUpdated');
     res.json({ message: "Updated" });
 });
 
-app.post('/add-student', (req, res) => {
+app.post('/add-student', async (req, res) => {
     const { name, room } = req.body;
-    let pathArray = room.includes(',') ? room.split(',').map(s => s.trim()) : [room.trim()];
+    const pathArray = room.includes(',') ? room.split(',').map(s => s.trim()) : [room.trim()];
     
-    const newStudent = {
-        id: Date.now().toString(),
+    await Student.create({
         name: name.trim(),
         path: pathArray,
-        currentStep: 0,
-        status: 'waiting', 
-        history: [],       
-        finalVerdict: 'Pending' 
-    };
+        status: 'waiting'
+    });
 
-    placementQueue.push(newStudent);
-    masterDatabase.push(newStudent);
-    saveData();
     io.emit('queueUpdated');
     res.json({ message: "Added" });
 });
 
-app.post('/edit-student', (req, res) => {
+app.post('/edit-student', async (req, res) => {
     const { index, newPath } = req.body;
-    const student = placementQueue[index];
+    const pathArray = newPath.includes(',') ? newPath.split(',').map(s => s.trim()) : [newPath.trim()];
+    
+    // In a DB-world, we find by ID usually, but sticking to index for your current UI
+    const students = await Student.find({ status: { $ne: 'finished' } });
+    const student = students[index];
+    
     if (student) {
-        let pathArray = [];
-        if (newPath.includes(',')) pathArray = newPath.split(',').map(s => s.trim());
-        else pathArray = [newPath.trim()];
-
         student.path = pathArray;
-        // Sync master
-        const masterRecord = masterDatabase.find(s => s.id === student.id);
-        if (masterRecord) masterRecord.path = pathArray;
-
-        saveData();
+        await student.save();
         io.emit('queueUpdated');
         res.json({ message: "Updated" });
     } else {
@@ -101,103 +93,69 @@ app.post('/edit-student', (req, res) => {
     }
 });
 
-app.delete('/remove-student/:index', (req, res) => {
-    const index = req.params.index;
-    const student = placementQueue[index];
-    if (student) {
-        const masterRecord = masterDatabase.find(s => s.id === student.id);
-        if (masterRecord) masterRecord.finalVerdict = 'Removed by Admin';
-        placementQueue.splice(index, 1);
-        saveData();
-        io.emit('queueUpdated');
-    }
-    res.json({ message: "Removed" });
-});
-
-app.post('/reset-all', (req, res) => {
-    placementQueue = [];
-    masterDatabase = [];
-    saveData();
-    io.emit('queueUpdated');
-    res.json({ message: "Reset" });
-});
-
-// --- CORE LOGIC: NON-KNOCKOUT SYSTEM ---
-app.post('/update-status', (req, res) => {
+app.post('/update-status', async (req, res) => {
     const { index, action } = req.body;
-    const student = placementQueue[index];
-    
+    const students = await Student.find({ status: { $ne: 'finished' } });
+    const student = students[index];
+
     if (!student) return res.status(404).json({ error: "Student not found" });
 
     const currentRoom = student.path[student.currentStep] || "Unknown";
 
     if (action === 'call') {
         student.status = 'interviewing';
-    } 
-    else {
-        // ACTION IS EITHER 'pass' OR 'fail'
-        // Both actions now move the student FORWARD.
-        
+    } else {
         const resultString = (action === 'pass') ? 'Selected' : 'Rejected';
-        
-        // 1. Record Result
         student.history.push({ room: currentRoom, result: resultString });
 
-        // 2. Move to Next Round (Regardless of Pass/Fail)
         if (student.currentStep < student.path.length - 1) {
             student.currentStep++;
-            student.status = 'waiting'; 
+            student.status = 'waiting';
         } else {
-            // 3. If Last Round -> Finish
             student.status = 'finished';
-            
-            // Auto-calculate final verdict: 
-            // If they were rejected in ANY round, Final Status = Rejected.
-            // If they were Selected in ALL rounds, Final Status = Selected.
             const hasRejection = student.history.some(h => h.result === 'Rejected');
             student.finalVerdict = hasRejection ? 'Rejected' : 'Selected';
-            
-            // Sync Master Record
-            const masterRecord = masterDatabase.find(s => s.id === student.id);
-            if(masterRecord) {
-                masterRecord.history = student.history;
-                masterRecord.finalVerdict = student.finalVerdict;
-            }
-
-            // Remove from Active Queue (Process Complete)
-            placementQueue.splice(index, 1);
         }
     }
 
-    saveData();
+    await student.save();
     io.emit('queueUpdated');
     res.json({ success: true });
 });
 
-// --- EXCEL REPORT ---
-app.get('/download-excel', (req, res) => {
-    const excelData = masterDatabase.map((s, i) => {
+app.delete('/remove-student/:index', async (req, res) => {
+    const students = await Student.find({ status: { $ne: 'finished' } });
+    const student = students[req.params.index];
+    if (student) {
+        await Student.deleteOne({ _id: student._id });
+        io.emit('queueUpdated');
+    }
+    res.json({ message: "Removed" });
+});
+
+app.post('/reset-all', async (req, res) => {
+    await Student.deleteMany({});
+    io.emit('queueUpdated');
+    res.json({ message: "Reset" });
+});
+
+app.get('/download-excel', async (req, res) => {
+    const allStudents = await Student.find();
+    const excelData = allStudents.map((s, i) => {
         let row = {
             "ID": i + 1,
             "Name": s.name,
             "Path": s.path.join(' -> '),
-            "Final Status": s.finalVerdict || s.status
+            "Final Status": s.finalVerdict
         };
-
         s.history.forEach((round, index) => {
             row[`Round ${index + 1}`] = `${round.room}: ${round.result}`;
         });
-
         return row;
     });
 
     const wb = xlsx.utils.book_new();
     const ws = xlsx.utils.json_to_sheet(excelData);
-    
-    // Auto-width columns
-    const wscols = [{wch: 5}, {wch: 20}, {wch: 30}, {wch: 15}, {wch: 25}, {wch: 25}, {wch: 25}];
-    ws['!cols'] = wscols;
-
     xlsx.utils.book_append_sheet(wb, ws, "Placement Report");
     const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
@@ -206,6 +164,5 @@ app.get('/download-excel', (req, res) => {
     res.send(buffer);
 });
 
-server.listen(3001, () => {
-    console.log('🚀 Server running at http://localhost:3001');
-});
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, () => console.log(`🚀 Live on port ${PORT}`));
