@@ -346,3 +346,47 @@ button:active { transform: translateY(0); }
 .new-entry {
     animation: fadeInSlide 0.5s ease forwards;
 }
+
+/* Full-screen overlay */
+#loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #0f172a; /* Match your dark theme background */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    transition: opacity 0.5s ease;
+}
+
+/* The animated circle */
+.loader {
+    width: 50px;
+    height: 50px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    border-top-color: #3b82f6; /* Modern Blue accent */
+    animation: spin 1s ease-in-out infinite;
+    margin-bottom: 15px;
+}
+
+.loading-text {
+    color: white;
+    font-family: sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+    animation: blink 1.5s infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* Class to hide it smoothly */
+.hidden {
+    opacity: 0;
+    pointer-events: none;
+}

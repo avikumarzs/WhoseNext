@@ -9,9 +9,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-
 // --- 1. DATABASE CONNECTION ---
-// Replace the URI below with your actual connection string from MongoDB Atlas
 const MONGO_URI = process.env.MONGO_URI || "your_mongodb_atlas_connection_string_here";
 
 mongoose.connect(MONGO_URI)
@@ -44,10 +42,16 @@ app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'adm
 
 // --- 4. API ROUTES (Database Driven) ---
 
+// Health Check for Render
+app.get('/health', (req, res) => res.status(200).send('OK'));
+
 app.get('/get-queue', async (req, res) => {
-    // Only fetch students who haven't finished the process
-    const queue = await Student.find({ status: { $ne: 'finished' } });
-    res.json(queue);
+    try {
+        const queue = await Student.find({ status: { $ne: 'finished' } });
+        res.json(queue);
+    } catch (err) {
+        res.status(500).json({ error: "DB Error" });
+    }
 });
 
 app.get('/get-company', async (req, res) => {
@@ -81,7 +85,6 @@ app.post('/edit-student', async (req, res) => {
     const { index, newPath } = req.body;
     const pathArray = newPath.includes(',') ? newPath.split(',').map(s => s.trim()) : [newPath.trim()];
     
-    // In a DB-world, we find by ID usually, but sticking to index for your current UI
     const students = await Student.find({ status: { $ne: 'finished' } });
     const student = students[index];
     

@@ -8,8 +8,41 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2280%22>⚙️</text></svg>">
+    
+    <style>
+        /* --- LOADING OVERLAY STYLES --- */
+        #loading-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #0f172a;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.8s ease, visibility 0.8s;
+        }
+        #loading-overlay.hidden { opacity: 0; visibility: hidden; }
+        .loader {
+            width: 50px; height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        .loading-text {
+            color: white; font-family: 'Inter', sans-serif;
+            font-weight: 600; letter-spacing: 2px;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
 </head>
 <body>
+    <div id="loading-overlay">
+        <div class="loader"></div>
+        <div class="loading-text">WAKING UP SERVER...</div>
+    </div>
+    
     <header>
         <h1>⚙️ Control Center</h1>
         <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode">🌙</button>
@@ -86,21 +119,21 @@
             </div>
             
             <table class="data-table">
-    <thead>
-        <tr>
-            <th>#</th> 
-            <th>Name</th> 
-            <th>Interview Path</th> <th>Status</th> 
-            <th style="text-align: right;">Actions</th>
-        </tr>
-    </thead>
-    <tbody id="adminList"></tbody>
-</table>
+                <thead>
+                    <tr>
+                        <th>#</th> 
+                        <th>Name</th> 
+                        <th>Interview Path</th> <th>Status</th> 
+                        <th style="text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="adminList"></tbody>
+            </table>
         </div>
     </div>
 
     <script>
-        // --- 1. GLOBAL SCOPE BINDING (Fixes "Not defined" errors) ---
+        // --- 1. GLOBAL SCOPE BINDING ---
         window.sendAction = sendAction;
         window.remove = remove;
         window.editPath = editPath;
@@ -113,30 +146,33 @@
         window.resetSystem = resetSystem;
         window.filterQueue = filterQueue;
 
-        // --- 2. THEME INITIALIZER ---
+        // --- 2. THEME & INITIALIZER ---
         (function() {
             const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') {
-                document.body.classList.add('dark-mode');
-            }
+            if (savedTheme === 'dark') document.body.classList.add('dark-mode');
         })();
 
-        window.addEventListener('DOMContentLoaded', () => {
+        // Function to hide overlay
+        function hideLoader() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) overlay.classList.add('hidden');
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
             const savedTheme = localStorage.getItem('theme');
             const toggleBtn = document.querySelector('.theme-toggle');
-            if (savedTheme === 'dark' && toggleBtn) {
-                toggleBtn.innerText = '☀️';
-            }
-            getCompany();
-            loadQueue();
+            if (savedTheme === 'dark' && toggleBtn) toggleBtn.innerText = '☀️';
+            
+            // Wait for data before hiding loader
+            await Promise.all([getCompany(), loadQueue()]);
+            hideLoader();
         });
 
         function toggleTheme() {
             document.body.classList.toggle('dark-mode');
             const isDark = document.body.classList.contains('dark-mode');
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            const icon = isDark ? '☀️' : '🌙';
-            document.querySelector('.theme-toggle').innerText = icon;
+            document.querySelector('.theme-toggle').innerText = isDark ? '☀️' : '🌙';
         }
 
         // --- 3. COMPANY BRANDING ---
@@ -144,7 +180,7 @@
             const company = document.getElementById('companyInput').value;
             await fetch('/set-company', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ company }) });
             document.getElementById('stat-company').innerText = company; 
-            alert("Company Name Updated on Display Board!");
+            alert("Company Name Updated!");
         }
 
         async function getCompany() {
@@ -187,11 +223,10 @@
                         }
                     }
                     statusDiv.innerText = "Done!";
-                    alert(`✅ Successfully added ${count} candidates from Excel.`);
+                    alert(`✅ Added ${count} candidates.`);
                     fileInput.value = ""; 
                     loadQueue(); 
                 } catch (err) {
-                    alert("Error reading Excel file.");
                     statusDiv.innerText = "Error";
                 }
             };
@@ -207,95 +242,66 @@
                 document.getElementById('name').value = ''; 
                 document.getElementById('room').value = ''; 
                 loadQueue();
-            } else {
-                alert("Please enter a Name");
             }
         }
 
         // --- 6. LOAD QUEUE & ACTIONS ---
         async function loadQueue() {
-        try {
-            const res = await fetch('/get-queue');
-            const data = await res.json();
-            const list = document.getElementById('adminList');
-            list.innerHTML = '';
+            try {
+                const res = await fetch('/get-queue');
+                const data = await res.json();
+                const list = document.getElementById('adminList');
+                list.innerHTML = '';
 
-            // Stats calculation
-            const activeCount = data.filter(s => s.status && s.status.toLowerCase() === 'interviewing').length;
-            const waitingCount = data.filter(s => s.status && s.status.toLowerCase() === 'waiting').length;
+                const activeCount = data.filter(s => s.status && s.status.toLowerCase() === 'interviewing').length;
+                const waitingCount = data.filter(s => s.status && s.status.toLowerCase() === 'waiting').length;
 
-            document.getElementById('stat-total').innerText = data.length;
-            document.getElementById('stat-active').innerText = activeCount;
-            document.getElementById('stat-waiting').innerText = waitingCount;
+                document.getElementById('stat-total').innerText = data.length;
+                document.getElementById('stat-active').innerText = activeCount;
+                document.getElementById('stat-waiting').innerText = waitingCount;
 
-            if(data.length === 0) {
-                list.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">Queue is empty</td></tr>';
-                return;
-            }
-
-            data.forEach((s, i) => {
-                const currentStatus = s.status ? s.status.toLowerCase() : '';
-                const currentRoom = s.path[s.currentStep] || "Finish";
-                
-                // --- GENERATE VISUAL PATH ---
-                // This highlights the current room in the sequence
-                const pathDisplay = s.path.map((room, idx) => {
-                    if (idx === s.currentStep) {
-                        return `<b style="color:var(--accent); text-decoration:underline;">${room}</b>`;
-                    }
-                    return `<span style="opacity:0.5;">${room}</span>`;
-                }).join(' → ');
-
-                let btn = '';
-                if (currentStatus === 'waiting') {
-                    btn = `<button type="button" class="btn-call" onclick="sendAction(${i}, 'call')">📢 Call In</button>`;
-                } 
-                else if (currentStatus === 'interviewing') {
-                    btn = `
-                        <div style="display:flex; gap:5px; justify-content:flex-end;">
-                            <button type="button" class="btn-done" style="background:var(--success); color:white; border:none;" onclick="sendAction(${i}, 'pass')" title="Select & Move Next">
-                                ✅ Select
-                            </button>
-                            <button type="button" class="btn-del" style="background:var(--danger); color:white; border:none;" onclick="sendAction(${i}, 'fail')" title="Reject & Move Next">
-                                👎 Reject
-                            </button>
-                        </div>
-                    `;
+                if(data.length === 0) {
+                    list.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">Queue is empty</td></tr>';
+                    return;
                 }
 
-                list.innerHTML += `
-                    <tr>
-        <td>${i+1}</td> 
-        <td style="font-weight:800; font-size:1rem;">${s.name}</td>
-        <td style="font-family: monospace; font-size:0.9rem;">${pathDisplay}</td>
-        <td>
-            <span class="badge ${currentStatus === 'waiting' ? 'badge-waiting' : 'badge-interviewing'}">
-                ${currentStatus === 'waiting' ? 'Waiting' : 'Inside Room'}
-            </span>
-        </td>
-        <td style="text-align:right;">
-            <div style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
-                ${btn} 
-                <button type="button" onclick="editPath(${i})" style="background:none; border:none; cursor:pointer; font-size:1.2rem; opacity:0.6;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">✏️</button>
-                <button type="button" onclick="remove(${i})" style="background:none; border:none; cursor:pointer; font-size:1.1rem; opacity:0.4;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.4">✕</button>
-            </div>
-        </td>
-    </tr>`;
-            });
-            filterQueue();
-        } catch (err) {
-            console.error("Error loading queue:", err);
-        }
-    }
+                data.forEach((s, i) => {
+                    const currentStatus = s.status ? s.status.toLowerCase() : '';
+                    const pathDisplay = s.path.map((room, idx) => {
+                        if (idx === s.currentStep) return `<b style="color:var(--accent); text-decoration:underline;">${room}</b>`;
+                        return `<span style="opacity:0.5;">${room}</span>`;
+                    }).join(' → ');
 
-        // --- 7. ACTION HANDLER ---
+                    let btn = '';
+                    if (currentStatus === 'waiting') {
+                        btn = `<button type="button" class="btn-call" onclick="sendAction(${i}, 'call')">📢 Call In</button>`;
+                    } else if (currentStatus === 'interviewing') {
+                        btn = `<div style="display:flex; gap:5px; justify-content:flex-end;">
+                                <button type="button" class="btn-done" style="background:var(--success); color:white; border:none;" onclick="sendAction(${i}, 'pass')">✅ Select</button>
+                                <button type="button" class="btn-del" style="background:var(--danger); color:white; border:none;" onclick="sendAction(${i}, 'fail')">👎 Reject</button>
+                               </div>`;
+                    }
+
+                    list.innerHTML += `<tr>
+                        <td>${i+1}</td> 
+                        <td style="font-weight:800;">${s.name}</td>
+                        <td style="font-family: monospace;">${pathDisplay}</td>
+                        <td><span class="badge ${currentStatus === 'waiting' ? 'badge-waiting' : 'badge-interviewing'}">${currentStatus === 'waiting' ? 'Waiting' : 'Inside Room'}</span></td>
+                        <td style="text-align:right;">
+                            <div style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
+                                ${btn} 
+                                <button type="button" onclick="editPath(${i})" style="background:none; border:none; cursor:pointer; font-size:1.2rem; opacity:0.6;">✏️</button>
+                                <button type="button" onclick="remove(${i})" style="background:none; border:none; cursor:pointer; font-size:1.1rem; opacity:0.4;">✕</button>
+                            </div>
+                        </td>
+                    </tr>`;
+                });
+                filterQueue();
+            } catch (err) { console.error(err); }
+        }
+
         async function sendAction(i, action) {
-            console.log(`Sending action: ${action} for index ${i}`); // Debug log
-            await fetch('/update-status', { 
-                method: 'POST', 
-                headers: {'Content-Type':'application/json'}, 
-                body: JSON.stringify({ index: i, action }) 
-            }); 
+            await fetch('/update-status', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ index: i, action }) }); 
             loadQueue(); 
         }
 
@@ -311,70 +317,35 @@
             const data = await res.json();
             const student = data[index];
             const currentPathString = student.path.join(', ');
-
-            const newPath = prompt(`Edit path for ${student.name}:\n(Current: ${currentPathString})`, currentPathString);
-
-            if (newPath !== null && newPath.trim() !== "") {
-                await fetch('/edit-student', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ index, newPath })
-                });
+            const newPath = prompt(`Edit path for ${student.name}:`, currentPathString);
+            if (newPath) {
+                await fetch('/edit-student', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ index, newPath }) });
                 loadQueue();
             }
         }
 
         async function resetSystem() {
-            if (confirm("🚨 WARNING: This will PERMANENTLY DELETE all student data and decisions. Are you sure?")) {
-                const password = prompt("Type 'RESET' to confirm:");
-                if (password === 'RESET') {
+            if (confirm("🚨 DELETE ALL DATA?")) {
+                if (prompt("Type 'RESET':") === 'RESET') {
                     await fetch('/reset-all', { method: 'POST' });
-                    alert("System has been cleared.");
                     loadQueue(); 
                 }
             }
         }
         
-        function downloadExcel() {
-            window.location.href = '/download-excel';
-        }
+        function downloadExcel() { window.location.href = '/download-excel'; }
 
         function filterQueue() {
-            const input = document.getElementById('adminSearch');
-            const query = input.value.toLowerCase().trim();
-            const tbody = document.querySelector('.data-table tbody');
-            const oldAlert = tbody.querySelector('.no-results-row');
-            if (oldAlert) oldAlert.remove();
-            
-            const rows = tbody.querySelectorAll('tr');
-            let matchCount = 0;
-            
+            const query = document.getElementById('adminSearch').value.toLowerCase().trim();
+            const rows = document.querySelectorAll('#adminList tr');
             rows.forEach(row => {
                 const nameCell = row.cells[1];
-                if (nameCell) {
-                    const name = nameCell.textContent.toLowerCase();
-                    if (name.includes(query)) {
-                        row.style.display = "";
-                        matchCount++;
-                    } else {
-                        row.style.display = "none";
-                    }
-                }
+                if (nameCell) row.style.display = nameCell.textContent.toLowerCase().includes(query) ? "" : "none";
             });
-            
-            if (query !== "" && matchCount === 0) {
-                const noResultRow = document.createElement('tr');
-                noResultRow.className = 'no-results-row';
-                noResultRow.innerHTML = `<td colspan="100%" style="text-align:center; padding:2rem; color:var(--text-muted); font-style:italic;">🔍 No candidates found matching "${input.value}"</td>`;
-                tbody.appendChild(noResultRow);
-            }
         }
 
         const socket = io();
-        socket.on('queueUpdated', async () => {
-            await loadQueue();
-            filterQueue();
-        });
+        socket.on('queueUpdated', () => loadQueue());
     </script>
 </body>
 </html>
