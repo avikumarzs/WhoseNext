@@ -109,7 +109,9 @@ app.post('/update-status', async (req, res) => {
 
     if (action === 'call') {
         student.status = 'interviewing';
-    } else {
+        io.emit('playChime'); // <-- NEW: Broadcasts the chime signal
+    }
+     else {
         const resultString = (action === 'pass') ? 'Selected' : 'Rejected';
         student.history.push({ room: currentRoom, result: resultString });
 

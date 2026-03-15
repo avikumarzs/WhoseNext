@@ -105,6 +105,8 @@
         </div>
     </div>
 
+    <audio id="chimeSound" src="chime.mp3" preload="auto"></audio>
+
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme');
@@ -222,6 +224,11 @@ function toggleFullScreen() {
 
         const socket = io();
         socket.on('queueUpdated', () => fetchUpdates());
+        // NEW: Listener for the audio chime
+        socket.on('playChime', () => {
+            const chime = document.getElementById('chimeSound');
+            // We use .catch() to prevent errors if the browser blocks auto-play
+            chime.play().catch(err => console.log("Audio requires user interaction first."));});
     </script>
 </body>
 </html>
