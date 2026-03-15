@@ -73,14 +73,22 @@
         <div class="loading-text">WAKING UP SERVER...</div>
     </div>
     
-    <header>
-        <h1 id="headerTitle" style="white-space: nowrap;">🎓 PLACEMENT DRIVE</h1>
-        <div class="header-controls">
-            <input type="text" id="globalSearch" onkeyup="globalFilter()" placeholder="🔍 Search name or room..." class="global-search">
-            <button class="theme-toggle" onclick="toggleTheme()" style="font-size: 1.5rem; background:none; border:none; cursor:pointer;">🌙</button>
-            <div id="clock">12:00</div>
-        </div>
-    </header>
+    <header style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px;">
+    <h1 id="headerTitle" style="white-space: nowrap; margin: 0; font-weight: 800; letter-spacing: -1px;">🎓 PLACEMENT DRIVE</h1>
+    
+    <div class="header-controls" style="display: flex; align-items: center; gap: 15px;">
+        <input type="text" id="globalSearch" onkeyup="globalFilter()" placeholder="🔍 Search name or room..." class="global-search" style="margin: 0;">
+        
+        <button onclick="toggleFullScreen()" title="Enter TV Mode" style="font-size: 1.5rem; background: transparent; border: none; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+            📺
+        </button>
+
+        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode" style="font-size: 1.5rem; background: transparent; border: none; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+            🌙
+        </button>
+        <div id="clock" style="margin-left: 10px;">12:00</div>
+    </div>
+</header>
 
     <div class="main-content">
         <div class="active-section">
@@ -122,6 +130,21 @@
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
             document.querySelector('.theme-toggle').innerText = isDark ? '☀️' : '🌙';
         }
+
+        // --- FULL SCREEN API LOGIC ---
+function toggleFullScreen() {
+    if (!document.fullscreenElement) {
+        // Enter Fullscreen
+        document.documentElement.requestFullscreen().catch(err => {
+            console.error(`Error attempting to enable fullscreen: ${err.message}`);
+        });
+    } else {
+        // Exit Fullscreen
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
+}
 
         setInterval(() => {
             document.getElementById('clock').innerText = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
