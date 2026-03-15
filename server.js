@@ -147,28 +147,36 @@ app.post('/reset-all', async (req, res) => {
 });
 
 app.get('/download-excel', async (req, res) => {
-    const allStudents = await Student.find();
-    const excelData = allStudents.map((s, i) => {
-        let row = {
-            "ID": i + 1,
-            "Name": s.name,
-            "Path": s.path.join(' -> '),
-            "Final Status": s.finalVerdict
-        };
-        s.history.forEach((round, index) => {
-            row[`Round ${index + 1}`] = `${round.room}: ${round.result}`;
+    try {
+        const allStudents = await Student.find();
+        const excelData = allStudents.map((s, i) => {
+            let row = {
+                "ID": i + 1,
+                "Name": s.name,
+                "Path": s.path.join(' -> ')
+            };
+            
+            // Split history into separate columns
+            s.history.forEach((round, index) => {
+                row[`Round ${index + 1} Room`] = round.room;
+                row[`Round ${index + 1} Status`] = round.result;
+            });
+            
+            return row;
         });
-        return row;
-    });
 
-    const wb = xlsx.utils.book_new();
-    const ws = xlsx.utils.json_to_sheet(excelData);
-    xlsx.utils.book_append_sheet(wb, ws, "Placement Report");
-    const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        const wb = xlsx.utils.book_new();
+        const ws = xlsx.utils.json_to_sheet(excelData);
+        xlsx.utils.book_append_sheet(wb, ws, "Placement Report");
+        const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
-    res.setHeader('Content-Disposition', 'attachment; filename="Final_Report.xlsx"');
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.send(buffer);
+        res.setHeader('Content-Disposition', 'attachment; filename="Final_Report.xlsx"');
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.send(buffer);
+    } catch (err) {
+        console.error("Excel Download Error:", err);
+        res.status(500).send("Error generating excel");
+    }
 });
 
 const PORT = process.env.PORT || 3001;
