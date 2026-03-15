@@ -17,11 +17,29 @@ A high-performance, full-stack web application designed to streamline student fl
 ---
 
 ## 🛠️ Tech Stack
-- **Frontend**: HTML5, CSS3 (Modern Flex/Grid), JavaScript (ES6+)
-- **Backend**: Node.js, Express.js
-- **Real-Time Communication**: Socket.io
-- **Database**: MongoDB Atlas (Mongoose)
-- **Data Processing**: SheetJS (XLSX)
+
+**Frontend**
+- HTML5 & CSS3 (Modern Flexbox/Grid architecture)
+- Vanilla JavaScript (ES6+)
+- Custom UI/Modal Engine (No external CSS frameworks)
+
+**Backend & Real-Time**
+- Node.js
+- Express.js
+- Socket.io (WebSocket protocol)
+
+**Database & Data Processing**
+- MongoDB Atlas (Cloud Database)
+- Mongoose (ODM)
+- SheetJS / `xlsx` (Excel parsing and generation)
+
+---
+
+## 📋 Prerequisites
+Before you begin, ensure you have the following installed on your local machine:
+- [Node.js](https://nodejs.org/) (v14.x or higher)
+- [npm](https://www.npmjs.com/) (Node Package Manager)
+- A [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) account and connection string.
 
 ---
 
@@ -39,7 +57,7 @@ A high-performance, full-stack web application designed to streamline student fl
    ```
 
 3. **Configure Environment Variables:**
-   Create a `.env` file in the root directory and add your MongoDB connection string:
+   Create a `.env` file in the root directory and add your MongoDB connection string and preferred port:
    ```env
    MONGO_URI=your_mongodb_atlas_connection_string
    PORT=3001
@@ -48,39 +66,49 @@ A high-performance, full-stack web application designed to streamline student fl
 4. **Start the server:**
    ```bash
    npm start
+   # Or for development with auto-restart: npm run dev (if nodemon is installed)
    ```
 
 5. **Access the application:**
-   - **Candidate Dashboard (User Page):** `http://localhost:3001`
-   - **Admin Control Center:** `http://localhost:3001/admin`
+   - **Candidate Dashboard (User Page):** `https://whosenext-0fx4.onrender.com`
+   - **Admin Control Center:** `https://whosenext-0fx4.onrender.com/admin`
 
 ---
 
 ## 📁 Project Structure
-- `server.js`: The core Express server handling Socket.io events and API routes.
-- `public/`:
-  - `user.html`: The live dashboard for public display.
-  - `admin.html`: The command center for recruitment coordinators.
-  - `style.css`: Unified styling for the premium dark-mode interface.
-  - `chime.mp3`: Local audio asset for student alerts.
+
+```text
+placement-drive/
+├── public/
+│   ├── admin.html      # Admin control center UI
+│   ├── user.html       # Candidate TV dashboard UI
+│   ├── style.css       # Unified premium styling
+│   └── chime.mp3       # Audio notification asset
+├── server.js           # Express server, Socket.io, & API logic
+├── package.json        # Project metadata and dependencies
+├── .env                # Environment variables (ignored in git)
+└── README.md           # Project documentation
+```
 
 ---
+
+## 🔌 Core API Endpoints
+
+- `GET /get-queue`: Fetches the current active student queue.
+- `GET /get-company`: Fetches current dashboard branding.
+- `POST /add-student`: Adds a new candidate to the database.
+- `POST /update-status`: Moves a candidate forward, rejects them, or calls them in.
+- `POST /edit-student`: Modifies a candidate's assigned interview path.
+- `DELETE /remove-student/:index`: Removes a candidate from the active queue.
+- `GET /download-excel`: Generates and downloads the final `.xlsx` report.
+
 ---
 
-## 📱 LinkedIn Post Draft
+## 🤝 Contributing
+Contributions, issues, and feature requests are welcome! 
+Feel free to check the [issues page](<your-issues-url>) if you want to contribute.
 
-**Headline: Streamlining Recruitment with Real-Time Engineering 🚀**
+---
 
-Managing hundreds of candidates across multiple interview rooms is a logistical challenge. I built a real-time management system to turn "Queue Chaos" into a sleek, automated digital experience during campus placement drives. 
-
-**What's under the hood?**
-✅ **Live Synchronization:** Using **Socket.io**, name updates and "Call Ins" happen instantly across all screens.
-✅ **TV-Ready Dashboard:** A dedicated interface for public displays, complete with animated progress bars and audio chimes to notify students.
-✅ **Automated Analytics:** Generates detailed Excel reports of the entire drive, including round-by-round results for every candidate.
-✅ **Modern UI/UX:** A custom-built, dark-mode interface designed for high-pressure environments.
-
-This project was a deep dive into building production-ready systems that handle time-sensitive data streams and provide immediate visual feedback. 
-
-**Tech Stack:** Node.js | Express | Socket.io | MongoDB | SheetJS
-
-#WebDevelopment #NodeJS #RecruitmentTech #SocketIO #FullStack #SoftwareEngineering #PlacementDrive
+## 📄 License
+This project is licensed under the **MIT License**. Feel free to use, modify, and distribute this project as per the terms of the license.
