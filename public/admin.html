@@ -44,7 +44,11 @@
     </div>
     
     <header>
-        <h1>⚙️ Control Center</h1>
+        <div style="display: flex; align-items: center; gap: 15px;">
+        <button onclick="toggleSidebar()" style="font-size: 1.5rem; background: none; border: none; cursor: pointer; color: var(--text-main); transition: 0.2s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'" title="Toggle Sidebar">
+            ☰
+        </button>
+        <h1 style="margin: 0;">⚙️ Control Center</h1>
         <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode">🌙</button>
     </header>
 
@@ -118,6 +122,7 @@
                     onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
             </div>
             
+            <div class="table-responsive-wrapper"></div>
             <table class="data-table">
                 <thead>
                     <tr>
@@ -129,6 +134,7 @@
                 </thead>
                 <tbody id="adminList"></tbody>
             </table>
+            </div>
         </div>
     </div>
 
@@ -145,6 +151,7 @@
         window.loadQueue = loadQueue;
         window.resetSystem = resetSystem;
         window.filterQueue = filterQueue;
+        window.toggleSidebar = toggleSidebar;
 
         // --- 2. THEME & INITIALIZER ---
         (function() {
@@ -159,6 +166,10 @@
         }
 
         window.addEventListener('DOMContentLoaded', async () => {
+            // Check if sidebar was collapsed previously
+        if (localStorage.getItem('sidebarCollapsed') === 'true') {
+            document.querySelector('.sidebar').classList.add('collapsed');
+        }
             const savedTheme = localStorage.getItem('theme');
             const toggleBtn = document.querySelector('.theme-toggle');
             if (savedTheme === 'dark' && toggleBtn) toggleBtn.innerText = '☀️';
@@ -332,6 +343,16 @@
                 }
             }
         }
+
+        // --- 7. SIDEBAR TOGGLE ---
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            sidebar.classList.toggle('collapsed');
+            
+            // Save the state so it remembers your preference if you refresh
+            const isCollapsed = sidebar.classList.contains('collapsed');
+            localStorage.setItem('sidebarCollapsed', isCollapsed);
+        }
         
         function downloadExcel() { window.location.href = '/download-excel'; }
 
@@ -345,7 +366,7 @@
         }
 
         const socket = io();
-        socket.on('queueUpdated', () => loadQueue());
+        socket.on('queueUpdated', () => loadQueue());  
     </script>
 </body>
 </html>

@@ -80,6 +80,18 @@ header h1 {
     flex-direction: column; 
     gap: 1.25rem; 
     overflow-y: auto;
+    overflow-x: hidden; /* Prevents text from spilling out during animation */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth slide */
+}
+
+/* The new collapsed state */
+.sidebar.collapsed {
+    width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    border-right: none;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .main-content { 
@@ -389,4 +401,64 @@ button:active { transform: translateY(0); }
 .hidden {
     opacity: 0;
     pointer-events: none;
+}
+
+/* =========================================
+   --- RESPONSIVE ENGINE (Added for Multi-Screen) ---
+   ========================================= */
+
+/* 1. LARGE SCREENS & TVs (1600px and up) */
+@media (min-width: 1600px) {
+    html { font-size: 18px; } /* Makes everything ~12.5% bigger */
+    .now-serving-card { padding: 3rem; }
+    .sidebar { width: 380px; }
+}
+@media (min-width: 2500px) {
+    html { font-size: 24px; } /* For massive 4K placement screens */
+}
+
+/* 2. TABLETS & SPLIT-SCREEN LAPTOPS (Max 1024px) */
+@media (max-width: 1024px) {
+    .sidebar { width: 260px; }
+    .main-content { padding: 1.5rem; }
+    .stats-container { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* 3. MOBILE PHONES (Max 768px) */
+@media (max-width: 768px) {
+    /* Unlock scrolling for stacked elements */
+    body { overflow: auto !important; height: auto !important; }
+    
+    .dashboard-container { 
+        flex-direction: column; 
+        height: auto; 
+    }
+    
+    .sidebar { 
+        width: 100%; 
+        border-right: none; 
+        border-bottom: 1px solid var(--border);
+    }
+
+    /* Fix user.html forced grid */
+    .main-content { 
+        grid-template-columns: 1fr !important; /* Stacks the active/queue sections */
+        overflow-y: visible !important;
+        padding: 1rem;
+    }
+
+    /* Keep the header controls readable */
+    header { flex-wrap: wrap; gap: 10px; }
+    .header-controls { width: 100%; justify-content: space-between; }
+    .global-search { max-width: 100%; margin-bottom: 10px; }
+
+    /* Fix Table overflow */
+    .table-responsive-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+    }
+    .data-table { border: none; }
 }
