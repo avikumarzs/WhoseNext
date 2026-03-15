@@ -1,4 +1,4 @@
-# 🎓 Placement Drive: Real-Time Queue Management System
+# 🎓 WhoseNext: Real-Time Placement Queue Management System
 
 A high-performance, full-stack web application designed to streamline student flow during recruitment drives. This system replaces manual coordination with a real-time, automated digital queue, featuring a premium dark-themed Admin Control Center and a live, TV-optimized Candidate Dashboard.
 
