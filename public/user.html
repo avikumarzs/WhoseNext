@@ -134,19 +134,19 @@
         }
 
         // --- FULL SCREEN API LOGIC ---
-function toggleFullScreen() {
-    if (!document.fullscreenElement) {
-        // Enter Fullscreen
-        document.documentElement.requestFullscreen().catch(err => {
-            console.error(`Error attempting to enable fullscreen: ${err.message}`);
-        });
-    } else {
-        // Exit Fullscreen
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                // Enter Fullscreen
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                // Exit Fullscreen
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
         }
-    }
-}
 
         setInterval(() => {
             document.getElementById('clock').innerText = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
@@ -182,38 +182,57 @@ function toggleFullScreen() {
 
                 document.getElementById('activeCountBadge').innerText = `${interviewing.length} Active`;
 
+                // --- 1. RENDER ACTIVE CARDS ---
                 grid.innerHTML = interviewing.length === 0 
                     ? `<div style="grid-column:1/-1; text-align:center; padding:5rem; color:var(--text-muted); opacity: 0.5;"><div style="font-size: 3rem;">☕</div>No Active Interviews</div>`
                     : interviewing.map(s => {
                         const displayName = s.name || "Unknown";
                         const initials = displayName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+                        const currentRoom = s.path[s.currentStep] || "Finish";
+                        
+                        // Progress Bar Math
+                        const totalRounds = s.path.length;
                         const currentRoundNum = s.currentStep + 1;
-                        return `<div class="now-serving-card pulsing">
-                                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 1.5rem;">
-                                        <div class="avatar-circle" style="width: 50px; height: 50px; background: var(--accent); color:white;">${initials}</div>
-                                        <div>
-                                            <div class="now-name" style="font-size: 1.3rem; font-weight: 800;">${displayName}</div>
-                                        </div>
-                                    </div>
-                                    <div style="background: var(--bg-main); padding: 1.2rem; border-radius: 16px; text-align: center; border: 1px solid var(--border);">
-                                        <div style="font-size: 0.7rem; color: var(--accent); font-weight: 800;">CURENTLY AT</div>
-                                        <div style="font-size: 1.8rem; font-weight: 900;">${s.path[s.currentStep]}</div>
-                                    </div>
-                                </div>`;
+                        const progressPercent = (currentRoundNum / totalRounds) * 100;
+                        const nextStepText = s.path[s.currentStep + 1] ? `Next: ${s.path[s.currentStep + 1]}` : 'Final Round';
+                        
+                        return `
+                        <div class="now-serving-card">
+                            <div class="card-profile">
+                                <div class="card-avatar">${initials}</div>
+                                <div class="card-name-group">
+                                    <span class="card-label">Candidate</span>
+                                    <h2 class="now-name">${displayName}</h2>
+                                </div>
+                            </div>
+                            <div class="card-room-box">
+                                <span class="card-label">Currently At</span>
+                                <span class="room-text">${currentRoom}</span>
+                            </div>
+                            
+                            <div class="progress-container">
+                                <div class="progress-text">
+                                    <span>Round ${currentRoundNum} of ${totalRounds}</span>
+                                    <span>${nextStepText}</span>
+                                </div>
+                                <div class="progress-track">
+                                    <div class="progress-fill" style="width: ${progressPercent}%;"></div>
+                                </div>
+                            </div>
+                        </div>`;
                     }).join('');
 
+                // --- 2. RENDER WAITING QUEUE ---
                 list.innerHTML = waiting.length === 0
                     ? `<div class="empty-state" style="text-align:center; padding:2rem;"><div style="font-size:40px;">☕</div><p>All clear!</p></div>`
                     : waiting.map((s, i) => `
-                        <div class="queue-item" style="margin-bottom: 12px; padding: 18px; border-left: 5px solid var(--accent);">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <div style="font-size:0.7rem; color:var(--text-muted);">TOKEN #${i+1}</div>
-                                    <div class="queue-name" style="font-weight: 800;">${s.name}</div>
-                                </div>
-                                <div style="text-align: right;">
-                                    <div style="font-size: 1.4rem; font-weight: 900; color: var(--accent);">${s.path[s.currentStep]}</div>
-                                </div>
+                        <div class="queue-item">
+                            <div class="queue-left">
+                                <div class="token-circle">${i+1}</div>
+                                <div class="queue-name">${s.name}</div>
+                            </div>
+                            <div class="queue-room-badge">
+                                ${s.path[s.currentStep] || "Waiting"}
                             </div>
                         </div>`).join('');
 
@@ -224,11 +243,12 @@ function toggleFullScreen() {
 
         const socket = io();
         socket.on('queueUpdated', () => fetchUpdates());
-        // NEW: Listener for the audio chime
+        
+        // Listener for the audio chime
         socket.on('playChime', () => {
             const chime = document.getElementById('chimeSound');
-            // We use .catch() to prevent errors if the browser blocks auto-play
-            chime.play().catch(err => console.log("Audio requires user interaction first."));});
+            chime.play().catch(err => console.log("Audio requires user interaction first."));
+        });
     </script>
 </body>
 </html>
