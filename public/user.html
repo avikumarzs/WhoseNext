@@ -8,42 +8,63 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>">
     <title>Live Dashboard</title>
     <style>
-        /* --- LOADING OVERLAY STYLES --- */
+        /* --- 1. LOADING OVERLAY STYLES --- */
         #loading-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #0f172a;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 9999;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #0f172a; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; z-index: 9999;
             transition: opacity 0.8s ease, visibility 0.8s;
         }
         #loading-overlay.hidden { opacity: 0; visibility: hidden; }
-        .loader {
-            width: 50px; height: 50px;
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-top: 4px solid #3b82f6;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-        .loading-text {
-            color: white; font-family: 'Inter', sans-serif;
-            font-weight: 600; letter-spacing: 2px;
-            animation: pulse 1.5s infinite;
-        }
+        .loader { width: 50px; height: 50px; border: 4px solid rgba(255, 255, 255, 0.1); border-top: 4px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        .loading-text { color: white; font-family: 'Inter', sans-serif; font-weight: 600; letter-spacing: 2px; animation: pulse 1.5s infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-        /* --- TV Dashboard Layout --- */
+        /* --- 2. DEFAULT TV / DESKTOP DASHBOARD --- */
+        /* Locks the body so the header never scrolls away on a TV */
         body { overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+        
         .main-content { flex: 1; padding: 20px; display: grid; grid-template-columns: 1fr 380px; gap: 25px; overflow: hidden; }
-        .active-section { background: var(--surface); border-radius: 24px; border: 1px solid var(--border); display: flex; flex-direction: column; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .queue-section { background: var(--bg-main); border-radius: 24px; border: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; }
+        
+        .active-section { background: var(--surface); border-radius: 24px; border: 1px solid var(--border); display: flex; flex-direction: column; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); overflow: hidden; }
+        .queue-section { background: var(--bg-main); border-radius: 24px; border: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; overflow: hidden; }
+        
         .header-controls { display: flex; align-items: center; gap: 20px; flex: 1; justify-content: flex-end; }
         .global-search { width: 100%; max-width: 450px; padding: 12px 25px; border-radius: 50px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); outline: none; transition: 0.3s; }
+        
+        /* Inner scrolling for the lists */
         #nowServingGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; overflow-y: auto; padding-right: 10px; }
         #upNextList { overflow-y: auto; flex: 1; padding-right: 5px; }
+        
         #clock { font-size: 1.2rem; font-weight: 800; color: var(--accent); min-width: 100px; text-align: right; }
+
+        /* --- 3. RESPONSIVE ENGINE --- */
+        
+        /* Large TVs (Dynamically scale up text and cards) */
+        @media (min-width: 1600px) {
+            html { font-size: 1.1vw; }
+            .main-content { grid-template-columns: 1fr 450px; } /* Makes the queue wider on big TVs */
+        }
+
+        /* Laptops & Split-Screen (Unlock scrolling, stack sections) */
+        @media (max-width: 1024px) {
+            body { height: auto !important; overflow: auto !important; }
+            .main-content { grid-template-columns: 1fr !important; overflow: visible; padding: 15px; }
+            .active-section, .queue-section { overflow: visible; }
+            #nowServingGrid, #upNextList { overflow-y: visible; max-height: none; }
+        }
+
+        /* Mobile Phones (Restructure header, single column grid) */
+        @media (max-width: 768px) {
+            header { flex-direction: column; align-items: flex-start; gap: 15px; padding: 15px; }
+            .header-controls { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+            .global-search { max-width: 100%; order: 3; margin-top: 10px; }
+            
+            #nowServingGrid { grid-template-columns: 1fr; } /* Cards take full width */
+            .now-serving-card { padding: 1.5rem; }
+            .active-section { padding: 15px; }
+        }
     </style>
 </head>
 <body>

@@ -404,61 +404,81 @@ button:active { transform: translateY(0); }
 }
 
 /* =========================================
-   --- RESPONSIVE ENGINE (Added for Multi-Screen) ---
+   --- RESPONSIVE ENGINE (V2: Fluid & Stacked) ---
    ========================================= */
 
 /* 1. LARGE SCREENS & TVs (1600px and up) */
 @media (min-width: 1600px) {
-    html { font-size: 18px; } /* Makes everything ~12.5% bigger */
-    .now-serving-card { padding: 3rem; }
-    .sidebar { width: 380px; }
-}
-@media (min-width: 2500px) {
-    html { font-size: 24px; } /* For massive 4K placement screens */
+    /* 'vw' makes the font scale dynamically with the physical width of the window */
+    html { font-size: 1vw; } 
+    .now-serving-card { padding: 2.5vw; }
 }
 
-/* 2. TABLETS & SPLIT-SCREEN LAPTOPS (Max 1024px) */
+/* 2. SPLIT-SCREEN & TABLETS (Triggers earlier to prevent collisions) */
 @media (max-width: 1024px) {
-    .sidebar { width: 260px; }
-    .main-content { padding: 1.5rem; }
-    .stats-container { grid-template-columns: repeat(2, 1fr); }
-}
-
-/* 3. MOBILE PHONES (Max 768px) */
-@media (max-width: 768px) {
-    /* Unlock scrolling for stacked elements */
-    body { overflow: auto !important; height: auto !important; }
+    /* Unlock the fixed height */
+    body { height: auto !important; overflow-y: auto !important; }
     
     .dashboard-container { 
-        flex-direction: column; 
+        flex-direction: column; /* Stacks the layout top-to-bottom */
         height: auto; 
+        padding: 1.5rem;
     }
     
     .sidebar { 
         width: 100%; 
         border-right: none; 
         border-bottom: 1px solid var(--border);
+        padding-bottom: 2rem;
     }
 
-    /* Fix user.html forced grid */
+    /* Force the user.html grid to stack */
     .main-content { 
-        grid-template-columns: 1fr !important; /* Stacks the active/queue sections */
-        overflow-y: visible !important;
-        padding: 1rem;
+        grid-template-columns: 1fr !important; 
+        padding: 1.5rem 0;
     }
 
-    /* Keep the header controls readable */
-    header { flex-wrap: wrap; gap: 10px; }
-    .header-controls { width: 100%; justify-content: space-between; }
-    .global-search { max-width: 100%; margin-bottom: 10px; }
+    .stats-container { grid-template-columns: repeat(2, 1fr); }
+    .header-controls { justify-content: space-between; width: 100%; margin-top: 10px; }
+    header { flex-wrap: wrap; }
+}
 
-    /* Fix Table overflow */
-    .table-responsive-wrapper {
-        width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
+/* 3. MOBILE PHONES */
+@media (max-width: 480px) {
+    .stats-container { grid-template-columns: 1fr; } /* Stats become a single column */
+    .global-search { max-width: 100%; }
+}
+
+/* 4. BULLETPROOF TABLE WRAPPER */
+.table-responsive-wrapper {
+    width: 100%;
+    max-width: 100vw; /* Prevents stretching beyond the screen */
+    overflow-x: auto; /* Adds a horizontal scrollbar JUST for the table */
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.data-table { border: none; } /* Removes double borders */
+
+/* =========================================
+   --- COLLAPSE FIX (Overrides all media queries) ---
+   ========================================= */
+
+/* Desktop Collapse (Shrinks horizontally) */
+.sidebar.collapsed {
+    width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    opacity: 0 !important;
+    overflow: hidden !important; /* Prevents text from stretching the invisible box */
+}
+
+/* Split-Screen/Mobile Collapse (Shrinks vertically) */
+@media (max-width: 1024px) {
+    .sidebar.collapsed {
+        width: 100% !important; 
+        height: 0 !important; /* Shrinks the height to 0 instead of width */
     }
-    .data-table { border: none; }
 }
