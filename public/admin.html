@@ -170,42 +170,59 @@
         window.toggleSidebar = toggleSidebar;
 
         // --- 2. THEME & INITIALIZER ---
-        (function() {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') document.body.classList.add('dark-mode');
-        })();
-
-        // Function to hide overlay
         function hideLoader() {
             const overlay = document.getElementById('loading-overlay');
             if (overlay) overlay.classList.add('hidden');
         }
 
-        window.addEventListener('DOMContentLoaded', async () => {
-    // 1. Restore Sidebar State
-    if (localStorage.getItem('sidebarCollapsed') === 'true') {
-        const sidebar = document.querySelector('.sidebar');
-        if (sidebar) sidebar.classList.add('collapsed');
-    }
+        async function initializeDashboard() {
+            // Check local storage for theme and sidebar state
+            const savedTheme = localStorage.getItem('theme');
+            const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
 
-    // 2. Restore Theme
-    const savedTheme = localStorage.getItem('theme');
-    const toggleBtn = document.querySelector('.theme-toggle');
-    if (savedTheme === 'dark' && toggleBtn) toggleBtn.innerText = '☀️';
-    
-    // 3. Fetch Data with a "Safety Timeout"
-    try {
-        // We wrap this in a timeout so the UI never stays stuck if the DB is slow
-        await Promise.race([
-            Promise.all([getCompany(), loadQueue()]),
-            new Promise(resolve => setTimeout(resolve, 3000)) // 3 second safety cap
-        ]);
-    } catch (err) {
-        console.error("Initial load error:", err);
-    } finally {
-        hideLoader(); // This MUST run no matter what
-    }
-});
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                const toggleBtn = document.querySelector('.theme-toggle');
+                if (toggleBtn) toggleBtn.innerText = '☀️';
+            }
+            if (sidebarCollapsed) {
+                const sidebar = document.querySelector('.sidebar');
+                if (sidebar) sidebar.classList.add('collapsed');
+            }
+
+            try {
+                // Define getCompany inside to fetch and update branding
+                async function getCompany() {
+                    const response = await fetch('/get-company');
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data && data.company) {
+                           document.getElementById('stat-company').innerText = data.company;
+                           document.getElementById('companyInput').value = data.company;
+                        }
+                    }
+                }
+
+                // Race the data fetching against a timeout
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Request timed out after 3000ms')), 3000)
+                );
+                
+                await Promise.race([
+                    Promise.all([getCompany(), loadQueue()]),
+                    timeoutPromise
+                ]);
+
+            } catch (error) {
+                console.error('Dashboard initialization failed:', error);
+            } finally {
+                // Always hide the loader
+                hideLoader();
+            }
+        }
+        
+        // Run the dashboard initialization immediately
+        initializeDashboard();
 
         function toggleTheme() {
             document.body.classList.toggle('dark-mode');
@@ -214,7 +231,7 @@
             document.querySelector('.theme-toggle').innerText = isDark ? '☀️' : '🌙';
         }
 
-        // --- PREMIUM MODAL ENGINE ---
+        // --- PREMIUM MODAL ENGINE (Fixed Duplication) ---
         function showModal(options) {
             return new Promise((resolve) => {
                 const overlay = document.getElementById('custom-modal');
@@ -232,9 +249,16 @@
                 if (options.type === 'prompt') {
                     input.style.display = 'block';
                     input.value = options.defaultVal || '';
-                    setTimeout(() => input.focus(), 100); // Auto-focus input
+                    setTimeout(() => input.focus(), 100); 
                 } else {
                     input.style.display = 'none';
+                }
+
+                // Hide Cancel button for informational alerts
+                if (options.infoOnly) {
+                    btnCancel.style.display = 'none';
+                } else {
+                    btnCancel.style.display = 'inline-block';
                 }
 
                 // Configure Confirm Button
@@ -259,29 +283,37 @@
             });
         }
 
-        // --- 3. COMPANY BRANDING (Updated) ---
+        // --- 3. COMPANY BRANDING (Confirm First) ---
         async function updateCompany() {
             const company = document.getElementById('companyInput').value;
-            await fetch('/set-company', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ company }) });
-            document.getElementById('stat-company').innerText = company; 
-            
-            // Replaced alert with showModal
-            await showModal({
-                title: "Branding Updated",
-                desc: `The dashboard title has been changed to "${company}".`,
-                confirmText: "Got it"
+            if(!company) return;
+
+            const confirmChange = await showModal({
+                title: "Update Branding?",
+                desc: `Change the dashboard title to "${company}"?`,
+                confirmText: "Update"
             });
+
+            if(confirmChange) {
+                await fetch('/set-company', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ company }) });
+                document.getElementById('stat-company').innerText = company; 
+                await showModal({
+                    title: "Branding Updated",
+                    desc: "The dashboard title has been changed successfully.",
+                    confirmText: "Got it",
+                    infoOnly: true 
+                });
+            }
         }
 
-        // --- 4. EXCEL UPLOAD LOGIC (Updated) ---
-        // --- 4. EXCEL UPLOAD LOGIC (Leaves "Done!" on success) ---
+        // --- 4. EXCEL UPLOAD LOGIC ---
         function handleExcelUpload() {
             const fileInput = document.getElementById('excelFile');
             const statusDiv = document.getElementById('uploadStatus');
             if (fileInput.files.length === 0) return;
             
             const file = fileInput.files[0];
-            statusDiv.innerText = "Processing..."; // Start processing text
+            statusDiv.innerText = "Reading file..."; 
             
             const reader = new FileReader();
             reader.onload = async (e) => {
@@ -293,58 +325,64 @@
                     
                     let studentsToUpload = [];
 
-                    // 1. Gather all students
                     for(let row of jsonData) {
                         const getVal = (obj, keys) => {
                             const foundKey = Object.keys(obj).find(k => keys.includes(k.toLowerCase()));
                             return foundKey ? obj[foundKey] : null;
                         };
-                        
                         const name = getVal(row, ['name', 'candidate name', 'student name', 'candidate']);
                         const room = getVal(row, ['room', 'path', 'location', 'rounds']) || "Waiting Area";
-                        
-                        if(name) {
-                            studentsToUpload.push({ name: String(name), room: String(room) });
-                        }
+                        if(name) studentsToUpload.push({ name: String(name), room: String(room) });
                     }
 
-                    // 2. Send to server
                     if (studentsToUpload.length > 0) {
-                        const response = await fetch('/add-bulk-students', { 
-                            method: 'POST', 
-                            headers: {'Content-Type':'application/json'}, 
-                            body: JSON.stringify({ students: studentsToUpload }) 
+                        const confirmUpload = await showModal({
+                            title: "Confirm Upload",
+                            desc: `Found ${studentsToUpload.length} candidates in the Excel file. Add them to the live queue?`,
+                            confirmText: "Upload Now"
                         });
 
-                        if (!response.ok) throw new Error("Server rejected the upload");
+                        if (confirmUpload) {
+                            statusDiv.innerText = "Processing...";
+                            const response = await fetch('/add-bulk-students', { 
+                                method: 'POST', 
+                                headers: {'Content-Type':'application/json'}, 
+                                body: JSON.stringify({ students: studentsToUpload }) 
+                            });
 
-                        statusDiv.innerText = "Done!"; // Stays on screen!
-                        
-                        await showModal({
-                            title: "Upload Successful",
-                            desc: `✅ Successfully added ${studentsToUpload.length} candidates to the queue.`,
-                            confirmText: "Perfect"
-                        });
+                            if (!response.ok) throw new Error("Server rejected the upload");
+
+                            statusDiv.innerText = "Done!";
+                            await showModal({
+                                title: "Upload Successful",
+                                desc: `✅ Added ${studentsToUpload.length} candidates to the queue.`,
+                                confirmText: "Perfect",
+                                infoOnly: true 
+                            });
+                        } else {
+                            statusDiv.innerText = ""; 
+                        }
                         
                     } else {
-                        statusDiv.innerText = ""; // Clear if empty
+                        statusDiv.innerText = ""; 
                         await showModal({
                             title: "No Data Found",
                             desc: "We couldn't find any candidate names in that file.",
-                            confirmText: "Close"
+                            confirmText: "Close",
+                            infoOnly: true
                         });
                     }
 
                 } catch (err) {
                     console.error(err);
-                    statusDiv.innerText = ""; // Clear on error so they can try again
+                    statusDiv.innerText = ""; 
                     await showModal({
                         title: "Upload Failed",
                         desc: "There was a problem processing the Excel file. Please ensure it has a 'Name' column.",
-                        confirmText: "Close"
+                        confirmText: "Close",
+                        infoOnly: true
                     });
                 } finally {
-                    // 3. CLEANUP: Only clears the file selector and refreshes table
                     fileInput.value = "";     
                     loadQueue();              
                 }
@@ -352,15 +390,23 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // --- 5. MANUAL ADD ---
+        // --- 5. MANUAL ADD (Confirm First) ---
         async function addStudent() {
             const name = document.getElementById('name').value;
             const room = document.getElementById('room').value;
             if(name) {
-                await fetch('/add-student', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, room }) });
-                document.getElementById('name').value = ''; 
-                document.getElementById('room').value = ''; 
-                loadQueue();
+                const confirmAdd = await showModal({
+                    title: "Add Candidate?",
+                    desc: `Are you sure you want to add ${name} to the queue?`,
+                    confirmText: "Add Student"
+                });
+
+                if (confirmAdd) {
+                    await fetch('/add-student', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, room }) });
+                    document.getElementById('name').value = ''; 
+                    document.getElementById('room').value = ''; 
+                    loadQueue();
+                }
             }
         }
 
@@ -407,10 +453,10 @@
                         <td style="font-family: monospace;">${pathDisplay}</td>
                         <td><span class="badge ${currentStatus === 'waiting' ? 'badge-waiting' : 'badge-interviewing'}">${currentStatus === 'waiting' ? 'Waiting' : 'Inside Room'}</span></td>
                         <td style="text-align:right;">
-                            <div style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
+                            <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px;">
                                 ${btn} 
-                                <button type="button" onclick="editPath(${i})" style="background:none; border:none; cursor:pointer; font-size:1.2rem; opacity:0.6;">✏️</button>
-                                <button type="button" onclick="remove(${i})" style="background:none; border:none; cursor:pointer; font-size:1.1rem; opacity:0.4;">✕</button>
+                                <button type="button" title="Edit Path" onclick="editPath(${i})" style="background:none; border:none; cursor:pointer; font-size:1.3rem; opacity:0.9; transition:0.2s;">✏️</button>
+                                <button type="button" title="Remove Student" onclick="remove(${i})" style="background:none; border:none; cursor:pointer; font-size:1.4rem; color:#ff4d4d; font-weight:bold; opacity:0.9; transition:0.2s;">✕</button>
                             </div>
                         </td>
                     </tr>`;
@@ -489,7 +535,6 @@
             const sidebar = document.querySelector('.sidebar');
             sidebar.classList.toggle('collapsed');
             
-            // Save the state so it remembers your preference if you refresh
             const isCollapsed = sidebar.classList.contains('collapsed');
             localStorage.setItem('sidebarCollapsed', isCollapsed);
         }
