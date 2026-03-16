@@ -81,6 +81,38 @@ app.post('/add-student', async (req, res) => {
     res.json({ message: "Added" });
 });
 
+// NEW: Bulk Add Route for Excel Uploads
+app.post('/add-bulk-students', async (req, res) => {
+    try {
+        const { students } = req.body; // Expects an array of { name, room }
+        
+        if (!students || students.length === 0) {
+            return res.status(400).json({ error: "No students provided" });
+        }
+
+        // Format data for MongoDB
+        const formattedStudents = students.map(st => {
+            const roomStr = String(st.room || "Waiting Area");
+            const pathArray = roomStr.includes(',') ? roomStr.split(',').map(s => s.trim()) : [roomStr.trim()];
+            
+            return {
+                name: String(st.name).trim(),
+                path: pathArray,
+                status: 'waiting'
+            };
+        });
+
+        // Insert all at once
+        await Student.insertMany(formattedStudents);
+
+        io.emit('queueUpdated');
+        res.json({ message: "Bulk upload successful", count: formattedStudents.length });
+    } catch (err) {
+        console.error("Bulk Upload Error:", err);
+        res.status(500).json({ error: "Failed to process excel data" });
+    }
+});
+
 app.post('/edit-student', async (req, res) => {
     const { index, newPath } = req.body;
     const pathArray = newPath.includes(',') ? newPath.split(',').map(s => s.trim()) : [newPath.trim()];
@@ -109,9 +141,8 @@ app.post('/update-status', async (req, res) => {
 
     if (action === 'call') {
         student.status = 'interviewing';
-        io.emit('playChime'); // <-- NEW: Broadcasts the chime signal
-    }
-     else {
+        io.emit('playChime'); // Broadcasts the chime signal
+    } else {
         const resultString = (action === 'pass') ? 'Selected' : 'Rejected';
         student.history.push({ room: currentRoom, result: resultString });
 

@@ -274,12 +274,15 @@
         }
 
         // --- 4. EXCEL UPLOAD LOGIC (Updated) ---
+        // --- 4. EXCEL UPLOAD LOGIC (Leaves "Done!" on success) ---
         function handleExcelUpload() {
             const fileInput = document.getElementById('excelFile');
             const statusDiv = document.getElementById('uploadStatus');
             if (fileInput.files.length === 0) return;
+            
             const file = fileInput.files[0];
-            statusDiv.innerText = "Processing...";
+            statusDiv.innerText = "Processing..."; // Start processing text
+            
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
@@ -287,35 +290,63 @@
                     const workbook = XLSX.read(data, {type: 'array'});
                     const firstSheet = workbook.SheetNames[0];
                     const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
-                    let count = 0;
+                    
+                    let studentsToUpload = [];
+
+                    // 1. Gather all students
                     for(let row of jsonData) {
                         const getVal = (obj, keys) => {
                             const foundKey = Object.keys(obj).find(k => keys.includes(k.toLowerCase()));
                             return foundKey ? obj[foundKey] : null;
                         };
+                        
                         const name = getVal(row, ['name', 'candidate name', 'student name', 'candidate']);
                         const room = getVal(row, ['room', 'path', 'location', 'rounds']) || "Waiting Area";
+                        
                         if(name) {
-                            await fetch('/add-student', { 
-                                method: 'POST', 
-                                headers: {'Content-Type':'application/json'}, 
-                                body: JSON.stringify({ name: String(name), room: String(room) }) 
-                            });
-                            count++;
+                            studentsToUpload.push({ name: String(name), room: String(room) });
                         }
                     }
-                    
-                    // Replaced alert with showModal
-                    await showModal({
-                        title: "Upload Successful",
-                        desc: `✅ Successfully added ${count} candidates to the queue.`,
-                        confirmText: "Perfect"
-                    });
 
-                    fileInput.value = ""; 
-                    loadQueue(); 
+                    // 2. Send to server
+                    if (studentsToUpload.length > 0) {
+                        const response = await fetch('/add-bulk-students', { 
+                            method: 'POST', 
+                            headers: {'Content-Type':'application/json'}, 
+                            body: JSON.stringify({ students: studentsToUpload }) 
+                        });
+
+                        if (!response.ok) throw new Error("Server rejected the upload");
+
+                        statusDiv.innerText = "Done!"; // Stays on screen!
+                        
+                        await showModal({
+                            title: "Upload Successful",
+                            desc: `✅ Successfully added ${studentsToUpload.length} candidates to the queue.`,
+                            confirmText: "Perfect"
+                        });
+                        
+                    } else {
+                        statusDiv.innerText = ""; // Clear if empty
+                        await showModal({
+                            title: "No Data Found",
+                            desc: "We couldn't find any candidate names in that file.",
+                            confirmText: "Close"
+                        });
+                    }
+
                 } catch (err) {
-                    statusDiv.innerText = "Error";
+                    console.error(err);
+                    statusDiv.innerText = ""; // Clear on error so they can try again
+                    await showModal({
+                        title: "Upload Failed",
+                        desc: "There was a problem processing the Excel file. Please ensure it has a 'Name' column.",
+                        confirmText: "Close"
+                    });
+                } finally {
+                    // 3. CLEANUP: Only clears the file selector and refreshes table
+                    fileInput.value = "";     
+                    loadQueue();              
                 }
             };
             reader.readAsArrayBuffer(file);
