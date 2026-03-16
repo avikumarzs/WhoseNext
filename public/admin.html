@@ -5,7 +5,7 @@
     <title>Admin Control Center</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2280%22>⚙️</text></svg>">
     
@@ -327,7 +327,7 @@
 
                     for(let row of jsonData) {
                         const getVal = (obj, keys) => {
-                            const foundKey = Object.keys(obj).find(k => keys.includes(k.toLowerCase()));
+                            const foundKey = Object.keys(obj).find(k => keys.includes(k.trim().toLowerCase()));
                             return foundKey ? obj[foundKey] : null;
                         };
                         const name = getVal(row, ['name', 'candidate name', 'student name', 'candidate']);
@@ -378,7 +378,7 @@
                     statusDiv.innerText = ""; 
                     await showModal({
                         title: "Upload Failed",
-                        desc: "There was a problem processing the Excel file. Please ensure it has a 'Name' column.",
+                        desc: "Error: " + err.message + ". (Press F12 and check the console for more details.)",
                         confirmText: "Close",
                         infoOnly: true
                     });
