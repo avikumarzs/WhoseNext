@@ -357,23 +357,15 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // --- 5. MANUAL ADD (Confirm First) ---
+        // --- 5. MANUAL ADD (No Confirmation) ---
         async function addStudent() {
             const name = document.getElementById('name').value;
             const room = document.getElementById('room').value;
             if(name) {
-                const confirmAdd = await showModal({
-                    title: "Add Candidate?",
-                    desc: `Are you sure you want to add ${name} to the queue?`,
-                    confirmText: "Add Student"
-                });
-
-                if (confirmAdd) {
-                    await fetch('/add-student', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, room }) });
-                    document.getElementById('name').value = ''; 
-                    document.getElementById('room').value = ''; 
-                    loadQueue();
-                }
+                await fetch('/add-student', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, room }) });
+                document.getElementById('name').value = ''; 
+                document.getElementById('room').value = ''; 
+                loadQueue();
             }
         }
 
