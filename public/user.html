@@ -53,7 +53,12 @@
             .now-serving-card { padding: 1.5rem; }
             .active-section { padding: 15px; }
         }
-    </style>
+@keyframes panelFlash { 
+            0% { box-shadow: 0 0 40px rgba(0, 230, 118, 0.4); border-color: var(--success, #00E676); transform: scale(1.01); } 
+            100% { box-shadow: 0 10px 30px rgba(0,0,0,0.05); border-color: var(--border); transform: scale(1); } 
+        } 
+        .flash-active { animation: panelFlash 2s ease-out; }
+</style>
 </head>
 <body>
     
@@ -222,12 +227,36 @@
         }
 
         const socket = io();
-        socket.on('queueUpdated', () => fetchUpdates());
         
-        // Listener for the audio chime
+        // 1. Listen for the database update
+        socket.on('queueUpdated', async () => {
+            await fetchUpdates(); // Wait for the screen to finish redrawing
+
+            // 2. IF the chime just played, flash the entire panel!
+            if (window.pendingFlash) {
+                const activePanel = document.querySelector('.active-section');
+                if (activePanel) {
+                    activePanel.classList.add('flash-active');
+                    
+                    // Remove class after 2 seconds so it can happen again later
+                    setTimeout(() => {
+                        activePanel.classList.remove('flash-active');
+                    }, 2000);
+                }
+                window.pendingFlash = false; // Reset the flag
+            }
+        });
+        
+        // 3. Listen for the audio chime
         socket.on('playChime', () => {
             const chime = document.getElementById('chimeSound');
-            chime.play().catch(err => console.log("Audio requires user interaction first."));
+            if (chime) {
+                chime.currentTime = 0; // Rewind for rapid-fire clicks
+                chime.play().catch(err => console.log("Audio needs interaction"));
+            }
+            
+            // Leave a sticky note for queueUpdated to trigger the visual flash
+            window.pendingFlash = true; 
         });
     </script>
 </body>
