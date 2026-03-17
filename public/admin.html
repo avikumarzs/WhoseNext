@@ -10,7 +10,8 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2280%22>⚙️</text></svg>">
     
     <style>
-        
+        .action-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+.action-buttons button { flex: 1 1 calc(50% - 5px); padding: 10px !important; min-width: 120px; transition: 0.2s; }
     </style>
 </head>
 <body>
@@ -50,9 +51,12 @@
             <div style="background: var(--bg-main); padding: 1rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem;">
                 <div class="input-group">
                     <label>Current Company</label>
-                    <input type="text" id="companyInput" placeholder="Ex: Google">
+                    <input type="text" id="companyInput" placeholder="Ex: Google" style="margin-bottom: 12px;">
                 </div>
-                <button class="btn-primary" style="padding: 0.5rem;" onclick="updateCompany()">Set Branding</button>
+                <div class="action-buttons">
+                    <button class="btn-primary" style="padding: 0.5rem;" onclick="updateCompany()">Set Branding</button>
+                    <button type="button" style="background: var(--danger); color: white; border: none; padding: 0.5rem; border-radius: 8px; cursor: pointer; font-weight: 600;" onclick="clearCompany()">Clear</button>
+                </div>
             </div>
 
             <hr style="border: 0; border-top: 1px solid var(--border); margin-bottom: 1.5rem;">
@@ -136,6 +140,7 @@
         window.handleExcelUpload = handleExcelUpload;
         window.addStudent = addStudent;
         window.updateCompany = updateCompany;
+        window.clearCompany = clearCompany;
         window.toggleTheme = toggleTheme;
         window.loadQueue = loadQueue;
         window.resetSystem = resetSystem;
@@ -272,6 +277,9 @@
                 });
             }
         }
+
+
+        async function clearCompany() { const defaultName = "Placement Drive"; await fetch('/set-company', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ company: defaultName }) }); document.getElementById('companyInput').value = ''; document.getElementById('stat-company').innerText = defaultName; }
 
         // --- 4. EXCEL UPLOAD LOGIC ---
         function handleExcelUpload() {
