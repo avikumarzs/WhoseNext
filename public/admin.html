@@ -10,38 +10,11 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2280%22>⚙️</text></svg>">
     
     <style>
-        /* --- LOADING OVERLAY STYLES --- */
-        #loading-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #0f172a;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 9999;
-            transition: opacity 0.8s ease, visibility 0.8s;
-        }
-        #loading-overlay.hidden { opacity: 0; visibility: hidden; }
-        .loader {
-            width: 50px; height: 50px;
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-top: 4px solid #3b82f6;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-        .loading-text {
-            color: white; font-family: 'Inter', sans-serif;
-            font-weight: 600; letter-spacing: 2px;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
     </style>
 </head>
 <body>
-    <div id="loading-overlay">
-        <div class="loader"></div>
-        <div class="loading-text">WAKING UP SERVER...</div>
-    </div>
+    
 
     <div id="custom-modal" class="modal-overlay hidden">
         <div class="modal-box">
@@ -170,10 +143,7 @@
         window.toggleSidebar = toggleSidebar;
 
         // --- 2. THEME & INITIALIZER ---
-        function hideLoader() {
-            const overlay = document.getElementById('loading-overlay');
-            if (overlay) overlay.classList.add('hidden');
-        }
+        
 
         async function initializeDashboard() {
             // Check local storage for theme and sidebar state
@@ -215,9 +185,6 @@
 
             } catch (error) {
                 console.error('Dashboard initialization failed:', error);
-            } finally {
-                // Always hide the loader
-                hideLoader();
             }
         }
         

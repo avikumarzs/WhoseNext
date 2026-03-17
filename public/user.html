@@ -8,19 +8,7 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>">
     <title>Live Dashboard</title>
     <style>
-        /* --- 1. LOADING OVERLAY STYLES --- */
-        #loading-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #0f172a; display: flex; flex-direction: column; 
-            align-items: center; justify-content: center; z-index: 9999;
-            transition: opacity 0.8s ease, visibility 0.8s;
-        }
-        #loading-overlay.hidden { opacity: 0; visibility: hidden; }
-        .loader { width: 50px; height: 50px; border: 4px solid rgba(255, 255, 255, 0.1); border-top: 4px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
-        .loading-text { color: white; font-family: 'Inter', sans-serif; font-weight: 600; letter-spacing: 2px; animation: pulse 1.5s infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-
+        
         /* --- 2. DEFAULT TV / DESKTOP DASHBOARD --- */
         /* Locks the body so the header never scrolls away on a TV */
         body { overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
@@ -68,10 +56,7 @@
     </style>
 </head>
 <body>
-    <div id="loading-overlay">
-        <div class="loader"></div>
-        <div class="loading-text">WAKING UP SERVER...</div>
-    </div>
+    
     
     <header style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px;">
     <h1 id="headerTitle" style="white-space: nowrap; margin: 0; font-weight: 800; letter-spacing: -1px;">🎓 PLACEMENT DRIVE</h1>
@@ -113,12 +98,7 @@
             if (savedTheme === 'dark') document.body.classList.add('dark-mode');
         })();
 
-        // Hide Loader once initial data is fetched
-        function hideLoader() {
-            const overlay = document.getElementById('loading-overlay');
-            if (overlay) overlay.classList.add('hidden');
-        }
-
+        
         window.addEventListener('DOMContentLoaded', () => {
             const savedTheme = localStorage.getItem('theme');
             const toggleBtn = document.querySelector('.theme-toggle');
@@ -236,7 +216,7 @@
                             </div>
                         </div>`).join('');
 
-                if (firstLoad) hideLoader();
+                
                 globalFilter();
             } catch (err) { console.error(err); }
         }
