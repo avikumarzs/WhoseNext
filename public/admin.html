@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Admin Control Center</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -11,7 +12,56 @@
     
     <style>
         .action-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
-.action-buttons button { flex: 1 1 calc(50% - 5px); padding: 10px !important; min-width: 120px; transition: 0.2s; }
+        .action-buttons button { flex: 1 1 calc(50% - 5px); padding: 10px !important; min-width: 120px; transition: 0.2s; }
+
+        /* --- Sidebar --- */
+
+        /* Desktop-first styles */
+        .sidebar {
+            width: 280px;
+            padding: 1.5rem;
+            border-right: 1px solid var(--border);
+            transition: width 0.3s ease, padding 0.3s ease;
+            overflow-y: auto;
+        }
+
+        .sidebar.collapsed {
+            width: 0;
+            padding: 1.5rem 0;
+            overflow: hidden;
+        }
+
+        /* Mobile-specific styles */
+        @media (max-width: 768px) {
+            .dashboard-container { 
+                flex-direction: column; 
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100vh; /* Full viewport height */
+                z-index: 990;
+                background: var(--bg-main);
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                border-right: none;
+                padding: 1.5rem;
+                overflow-y: auto;
+                box-sizing: border-box;
+                padding-top: 85px !important;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .stats-container { 
+                grid-template-columns: repeat(2, 1fr) !important; 
+            }
+        }
     </style>
 </head>
 <body>
@@ -20,7 +70,7 @@
     <div id="custom-modal" class="modal-overlay hidden">
         <div class="modal-box">
             <h3 id="modal-title">Title</h3>
-            <p id="modal-desc">Description text goes here.</p>
+            <p id="modal-desc">Description text</p>
             <input type="text" id="modal-input" style="display: none;">
             <div class="modal-actions">
                 <button id="modal-cancel" class="btn-cancel">Cancel</button>
@@ -115,7 +165,7 @@
                     onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
             </div>
             
-            <div class="table-responsive-wrapper"></div>
+            <div class="table-responsive-wrapper" style="overflow-x: auto; width: 100%; padding-bottom: 15px;">
             <table class="data-table">
                 <thead>
                     <tr>
@@ -127,6 +177,7 @@
                 </thead>
                 <tbody id="adminList"></tbody>
             </table>
+            </div>
             </div>
         </div>
     </div>
@@ -160,7 +211,7 @@
                 const toggleBtn = document.querySelector('.theme-toggle');
                 if (toggleBtn) toggleBtn.innerText = '☀️';
             }
-            if (sidebarCollapsed) {
+            if (window.innerWidth > 768 && sidebarCollapsed) {
                 const sidebar = document.querySelector('.sidebar');
                 if (sidebar) sidebar.classList.add('collapsed');
             }
@@ -500,10 +551,13 @@
         // --- 7. SIDEBAR TOGGLE ---
         function toggleSidebar() {
             const sidebar = document.querySelector('.sidebar');
-            sidebar.classList.toggle('collapsed');
-            
-            const isCollapsed = sidebar.classList.contains('collapsed');
-            localStorage.setItem('sidebarCollapsed', isCollapsed);
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('open');
+            } else {
+                sidebar.classList.toggle('collapsed');
+                const isCollapsed = sidebar.classList.contains('collapsed');
+                localStorage.setItem('sidebarCollapsed', isCollapsed);
+            }
         }
         
         function downloadExcel() { window.location.href = '/download-excel'; }
