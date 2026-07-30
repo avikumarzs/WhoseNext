@@ -67,14 +67,16 @@ header h1 {
     margin: 0;
 }
 
-/* --- LAYOUTS --- */
+/* --- LAYOUTS (UPDATED FOR FULL-WIDTH) --- */
 .dashboard-container { 
-    display: flex; 
-    height: calc(100vh - 60px); 
+    display: block; /* Changed from flex to block to support edge-to-edge top bar */
+    min-height: calc(100vh - 60px); 
     position: relative; 
-    overflow: hidden; 
+    padding: 1.5rem 2rem; /* Moved padding to the container */
+    box-sizing: border-box;
 }
 
+/* Retaining sidebar classes just in case they are used on other pages */
 .sidebar { 
     width: 320px; 
     background: var(--surface); 
@@ -84,11 +86,10 @@ header h1 {
     flex-direction: column; 
     gap: 1.25rem; 
     overflow-y: auto;
-    overflow-x: hidden; /* Prevents text from spilling out during animation */
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth slide */
+    overflow-x: hidden; 
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
 }
 
-/* The new collapsed state */
 .sidebar.collapsed {
     width: 0;
     padding-left: 0;
@@ -99,9 +100,10 @@ header h1 {
 }
 
 .main-content { 
-    flex: 1; 
-    padding: 2rem; 
-    overflow-y: auto; 
+    width: 100%;
+    max-width: 100%;
+    padding: 0; 
+    margin: 0;
     background: var(--bg-main); 
 }
 
@@ -413,7 +415,6 @@ button:active { transform: translateY(0); }
 
 /* 1. LARGE SCREENS & TVs (1600px and up) */
 @media (min-width: 1600px) {
-    /* 'vw' makes the font scale dynamically with the physical width of the window */
     html { font-size: 1vw; } 
     .now-serving-card { padding: 2.5vw; }
 }
@@ -424,8 +425,6 @@ button:active { transform: translateY(0); }
     body { height: auto !important; overflow-y: auto !important; }
     
     .dashboard-container { 
-        flex-direction: column; /* Stacks the layout top-to-bottom */
-        height: auto; 
         padding: 1.5rem;
     }
     
@@ -439,7 +438,6 @@ button:active { transform: translateY(0); }
     /* Force the user.html grid to stack */
     .main-content { 
         grid-template-columns: 1fr !important; 
-        padding: 1.5rem 0;
     }
 
     .stats-container { grid-template-columns: repeat(2, 1fr); }
@@ -456,16 +454,14 @@ button:active { transform: translateY(0); }
 /* 4. BULLETPROOF TABLE WRAPPER */
 .table-responsive-wrapper {
     width: 100%;
-    max-width: 100%; /* Prevents stretching beyond the screen */
-    overflow-x: auto; /* Adds a horizontal scrollbar JUST for the table */
+    max-width: 100%; 
+    overflow-x: auto; 
     -webkit-overflow-scrolling: touch;
     border: 1px solid var(--border);
     border-radius: var(--radius);
 }
 
-.data-table { border: none; } /* Removes double borders */
-
-
+.data-table { border: none; } 
 
 /* =========================================
    --- PREMIUM UI COMPONENTS (USER DASHBOARD) ---

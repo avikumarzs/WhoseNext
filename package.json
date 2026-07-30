@@ -1,19 +1,28 @@
 {
   "name": "development",
   "version": "1.0.0",
-  "description": "",
+  "description": "A high-performance, full-stack web application designed to streamline student flow during recruitment drives. This system replaces manual coordination with a real-time, automated digital queue, featuring a premium dark-themed Admin Control Center and a live, TV-optimized Candidate Dashboard.",
+  "keywords": [],
+  "homepage": "https://github.com/avikumarzs/WhoseNext#readme",
+  "bugs": {
+    "url": "https://github.com/avikumarzs/WhoseNext/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/avikumarzs/WhoseNext.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "dotenv": "^17.3.1",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "mongoose": "^9.3.0",
+    "mongoose": "^9.9.0",
     "socket.io": "^4.8.3",
     "xlsx": "^0.18.5"
   }

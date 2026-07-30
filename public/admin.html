@@ -11,131 +11,133 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2280%22>⚙️</text></svg>">
     
     <style>
-        .action-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
-        .action-buttons button { flex: 1 1 calc(50% - 5px); padding: 10px !important; min-width: 120px; transition: 0.2s; }
-
-        /* --- Sidebar --- */
-
-        /* Desktop-first styles */
-        .sidebar {
-            width: 280px;
-            padding: 1.5rem;
-            border-right: 1px solid var(--border);
-            transition: width 0.3s ease, padding 0.3s ease;
-            overflow-y: auto;
+        /* Sleek Header Icon Buttons */
+        .icon-btn {
+            font-size: 1.3rem;
+            background: transparent;
+            border: none;
+            outline: none;
+            box-shadow: none;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+        }
+        .icon-btn:hover {
+            transform: scale(1.15);
+            opacity: 0.8;
+        }
+        .header-divider {
+            width: 1px; height: 24px; background: var(--border); margin: 0 10px;
         }
 
-        .sidebar.collapsed {
-            width: 0;
-            padding: 1.5rem 0;
-            overflow: hidden;
-        }
-
-        /* Mobile-specific styles */
-        @media (max-width: 768px) {
-            .dashboard-container { 
-                flex-direction: column; 
-            }
-
-            .sidebar {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100vh; /* Full viewport height */
-                z-index: 990;
-                background: var(--bg-main);
-                transform: translateX(-100%);
-                transition: transform 0.3s ease;
-                border-right: none;
-                padding: 1.5rem;
-                overflow-y: auto;
-                box-sizing: border-box;
-                padding-top: 85px !important;
-            }
-
-            .sidebar.open {
-                transform: translateX(0);
-            }
-
-            .stats-container { 
-                grid-template-columns: repeat(2, 1fr) !important; 
-            }
-        }
+        /* Dynamic Status Badges */
+        .badge-unmarked { background: #6c757d; color: white; }
+        .badge-absent { background: #4b4b4b; color: white; }
+        .badge-hold { background: var(--warning); color: black; }
+        .badge-completed { background: var(--success); color: white; }
+        .badge-interviewing { background: #3b82f6; color: white; }
+        
+        .dashboard-container { padding: 0 1.5rem; }
+        
+        /* Modal Additions */
+        .modal-box h3 { margin-top: 0; color: var(--text-main); }
+        .modal-box .input-group { margin-bottom: 15px; text-align: left; }
+        .modal-box .input-group label { display: block; margin-bottom: 5px; font-size: 0.85rem; color: var(--text-muted); }
+        .modal-box .input-group input { width: 100%; box-sizing: border-box; }
+        
+        /* Table overrides for centering */
+        .data-table th, .data-table td { text-align: center; }
+        .data-table th.align-left, .data-table td.align-left { text-align: left; }
     </style>
 </head>
 <body>
-    
 
+    <!-- Generic System Modal -->
     <div id="custom-modal" class="modal-overlay hidden">
         <div class="modal-box">
             <h3 id="modal-title">Title</h3>
             <p id="modal-desc">Description text</p>
-            <input type="text" id="modal-input" style="display: none;">
+            <input type="text" id="modal-input" style="display: none; width: 100%; box-sizing: border-box; margin-bottom: 15px;">
             <div class="modal-actions">
                 <button id="modal-cancel" class="btn-cancel">Cancel</button>
                 <button id="modal-confirm" class="btn-primary">Confirm</button>
             </div>
         </div>
     </div>
-    
-    <header style="display: flex; justify-content: space-between; align-items: center;">
-    <div style="display: flex; align-items: center; gap: 15px;">
-        <button onclick="toggleSidebar()" style="font-size: 1.5rem; background: none; border: none; cursor: pointer; color: var(--text-main); transition: 0.2s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'" title="Toggle Sidebar">
-            ☰
-        </button>
-        <h1 style="margin: 0; font-weight: 800; letter-spacing: -1px;">⚙️ Control Center</h1>
+
+    <!-- Company Details Modal -->
+    <div id="company-details-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <h3>🏢 Company Details</h3>
+            <div class="input-group">
+                <label>Company Name</label> 
+                <input type="text" id="company-name-input" placeholder="e.g., Google">
+            </div>
+            <div class="input-group">
+                <label>Date of Placement Drive</label> 
+                <input type="date" id="drive-date-input">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeCompanyModal()">Cancel</button>
+                <button class="btn-primary" onclick="saveCompanyDetails()">Save Details</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Candidate Modal -->
+    <div id="add-candidate-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <h3>➕ Add Candidate</h3>
+            <div class="input-group">
+                <label>PRN / ID</label> 
+                <input type="text" id="prn" placeholder="123456789012">
+            </div>
+            <div class="input-group">
+                <label>Name</label> 
+                <input type="text" id="name" placeholder="John Doe">
+            </div>
+            <div class="input-group">
+                <label>Branch</label> 
+                <input type="text" id="branch" placeholder="CSE">
+            </div>
+            <div class="input-group">
+                <label>Room Path (Comma Separated)</label> 
+                <input type="text" id="room" placeholder="203, 302, HR">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeAddCandidateModal()">Cancel</button>
+                <button class="btn-primary" onclick="addStudent()">Add to Pipeline</button>
+            </div>
+        </div>
     </div>
     
-    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode" style="font-size: 1.5rem; background: transparent; border: none; outline: none; box-shadow: none; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
-        🌙
-    </button>
-</header>
+    <header style="display: flex; justify-content: space-between; align-items: center; padding: 1.2rem 2rem;">
+        <h1 style="margin: 0; font-weight: 800; letter-spacing: -1px;">⚙️ Control Center</h1>
+        
+        <!-- Sleek Icon Action Bar -->
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <button class="icon-btn" onclick="openCompanyModal()" title="Set Company Details">🏢</button>
+            <button class="icon-btn" onclick="openAddCandidateModal()" title="Add Candidate">➕</button>
+            <label class="icon-btn" title="Upload Excel" style="cursor: pointer; margin: 0;">
+                📂
+                <input type="file" id="excelFile" accept=".xlsx" onchange="handleExcelUpload()" style="display: none;">
+            </label>
+            <button class="icon-btn" onclick="resetSystem()" title="Reset Drive">🗑️</button>
+            <button class="icon-btn" onclick="downloadExcel()" title="Download Final Report">📥</button>
+            
+            <div class="header-divider"></div>
+            
+            <button class="icon-btn theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode">🌙</button>
+        </div>
+    </header>
 
     <div class="dashboard-container">
-        <div class="sidebar">
-            <button onclick="downloadExcel()" class="btn-primary" style="background: var(--success); color: white; margin-bottom: 1.5rem; font-weight: 800; border:none; width:100%;">
-                📥 Download Final Report
-            </button>
-
-            <div style="background: var(--bg-main); padding: 1rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem;">
-                <div class="input-group">
-                    <label>Current Company</label>
-                    <input type="text" id="companyInput" placeholder="Ex: Google" style="margin-bottom: 12px;">
-                </div>
-                <div class="action-buttons">
-                    <button class="btn-primary" style="padding: 0.5rem;" onclick="updateCompany()">Set Branding</button>
-                    <button type="button" style="background: var(--danger); color: white; border: none; padding: 0.5rem; border-radius: 8px; cursor: pointer; font-weight: 600;" onclick="clearCompany()">Clear</button>
-                </div>
-            </div>
-
-            <hr style="border: 0; border-top: 1px solid var(--border); margin-bottom: 1.5rem;">
-
-            <h3 style="color:var(--text-main);">Add Candidate</h3>
-            <div class="input-group">
-                <label>PRN / ID</label> <input type="text" id="prn" placeholder="123456789012">
-            </div>
-            <div class="input-group">
-                <label>Name</label> <input type="text" id="name" placeholder="John Doe">
-            </div>
-            <div class="input-group">
-                <label>Room Path</label> <input type="text" id="room" placeholder="203, 302, HR">
-            </div>
-            <button class="btn-primary" onclick="addStudent()">Add to Queue</button>
-            
-            <div style="margin-top: 1.5rem;">
-                <label style="cursor: pointer; border: 2px dashed var(--border); padding: 1rem; border-radius: 8px; text-align: center; display: block; color: var(--text-muted); font-size: 0.85rem; transition: 0.2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-                    📂 <b>Upload Excel File</b><br>
-                    <span style="font-size: 0.75rem; opacity: 0.8;">(.xlsx files only)</span>
-                    <input type="file" id="excelFile" accept=".xlsx" onchange="handleExcelUpload()" style="display: none;">
-                </label>
-                <div id="uploadStatus" style="font-size: 0.8rem; color: var(--accent); text-align: center; margin-top: 5px; height: 15px;"></div>
-            </div>
-
-            <button onclick="resetSystem()" style="background: #ff4757; color: white; margin-top: 2rem; border: none; padding: 10px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 800; opacity: 0.6;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
-                🗑️ Reset System for New Drive
-            </button>
-        </div>
+        
+        <div id="uploadStatus" style="font-size: 0.9rem; color: var(--accent); text-align: center; margin-top: 15px; margin-bottom: 15px; height: 15px;"></div>
 
         <div class="main-content">
             <div class="stats-container" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
@@ -158,13 +160,13 @@
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h2 style="font-size: 1.1rem; color: var(--text-muted); text-transform: uppercase;">Active Queue</h2>
+                <h2 style="font-size: 1.1rem; color: var(--text-muted); text-transform: uppercase;">Active Pipeline</h2>
                 <button onclick="loadQueue()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer;" title="Refresh List">🔄</button>
             </div>
 
             <div style="margin-bottom: 1.5rem; position: relative;">
-                <input type="text" id="adminSearch" onkeyup="filterQueue()" placeholder="🔍 Search for candidate" 
-                    style="width: 100%; padding: 12px 15px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); font-size: 0.95rem; outline: none; transition: 0.3s;"
+                <input type="text" id="adminSearch" onkeyup="filterQueue()" placeholder="🔍 Search for candidate by name..." 
+                    style="width: 100%; padding: 12px 15px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); font-size: 0.95rem; outline: none; transition: 0.3s; box-sizing: border-box;"
                     onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
             </div>
             
@@ -172,83 +174,52 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>#</th> 
-                        <th style="min-width: 130px;">PRN</th>
-                        <th>Name</th> 
-                        <th>Interview Path</th> <th>Status</th> 
-                        <th style="text-align: right;">Actions</th>
+                        <th style="width: 10%;">PRN</th>
+                        <th class="align-left" style="width: 18%;">Name</th> 
+                        <th style="width: 8%;">Branch</th>
+                        <th style="width: 15%;">Interview Path</th> 
+                        <th style="width: 10%;">Status</th> 
+                        <th style="width: 10%;">Attendance</th>
+                        <th style="width: 19%;">Update Status</th>
+                        <th style="width: 10%;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="adminList"></tbody>
             </table>
             </div>
-            </div>
         </div>
     </div>
 
     <script>
-        // --- 1. GLOBAL SCOPE BINDING ---
-        window.sendAction = sendAction;
-        window.remove = remove;
-        window.editPath = editPath;
-        window.downloadExcel = downloadExcel;
-        window.handleExcelUpload = handleExcelUpload;
-        window.addStudent = addStudent;
-        window.updateCompany = updateCompany;
-        window.clearCompany = clearCompany;
-        window.toggleTheme = toggleTheme;
-        window.loadQueue = loadQueue;
-        window.resetSystem = resetSystem;
-        window.filterQueue = filterQueue;
-        window.toggleSidebar = toggleSidebar;
-
-        // --- 2. THEME & INITIALIZER ---
-        
+        // --- Helper Function: Title Case Formatter ---
+        function toTitleCase(str) {
+            if (!str) return '';
+            return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        }
 
         async function initializeDashboard() {
-            // Check local storage for theme and sidebar state
             const savedTheme = localStorage.getItem('theme');
-            const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-
             if (savedTheme === 'dark') {
                 document.body.classList.add('dark-mode');
                 const toggleBtn = document.querySelector('.theme-toggle');
                 if (toggleBtn) toggleBtn.innerText = '☀️';
             }
-            if (window.innerWidth > 768 && sidebarCollapsed) {
-                const sidebar = document.querySelector('.sidebar');
-                if (sidebar) sidebar.classList.add('collapsed');
-            }
 
             try {
-                // Define getCompany inside to fetch and update branding
                 async function getCompany() {
                     const response = await fetch('/get-company');
                     if (response.ok) {
                         const data = await response.json();
                         if (data && data.company) {
                            document.getElementById('stat-company').innerText = data.company;
-                           document.getElementById('companyInput').value = data.company;
                         }
                     }
                 }
-
-                // Race the data fetching against a timeout
-                const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Request timed out after 3000ms')), 3000)
-                );
-                
-                await Promise.race([
-                    Promise.all([getCompany(), loadQueue()]),
-                    timeoutPromise
-                ]);
-
-            } catch (error) {
-                console.error('Dashboard initialization failed:', error);
-            }
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000));
+                await Promise.race([Promise.all([getCompany(), loadQueue()]), timeoutPromise]);
+            } catch (error) { console.error('Init failed:', error); }
         }
         
-        // Run the dashboard initialization immediately
         initializeDashboard();
 
         function toggleTheme() {
@@ -258,7 +229,7 @@
             document.querySelector('.theme-toggle').innerText = isDark ? '☀️' : '🌙';
         }
 
-        // --- PREMIUM MODAL ENGINE (Fixed Duplication) ---
+        // --- Core Modal Logic ---
         function showModal(options) {
             return new Promise((resolve) => {
                 const overlay = document.getElementById('custom-modal');
@@ -268,11 +239,9 @@
                 const btnCancel = document.getElementById('modal-cancel');
                 const btnConfirm = document.getElementById('modal-confirm');
 
-                // Set content
                 title.innerText = options.title;
                 desc.innerText = options.desc || '';
                 
-                // Configure Input for Prompts
                 if (options.type === 'prompt') {
                     input.style.display = 'block';
                     input.value = options.defaultVal || '';
@@ -281,21 +250,14 @@
                     input.style.display = 'none';
                 }
 
-                // Hide Cancel button for informational alerts
-                if (options.infoOnly) {
-                    btnCancel.style.display = 'none';
-                } else {
-                    btnCancel.style.display = 'inline-block';
-                }
+                if (options.infoOnly) btnCancel.style.display = 'none';
+                else btnCancel.style.display = 'inline-block';
 
-                // Configure Confirm Button
                 btnConfirm.innerText = options.confirmText || 'Confirm';
                 btnConfirm.style.background = options.danger ? 'var(--danger)' : 'var(--primary)';
 
-                // Show Modal
                 overlay.classList.remove('hidden');
 
-                // Handle Close
                 const cleanup = () => {
                     overlay.classList.add('hidden');
                     btnConfirm.onclick = null;
@@ -303,40 +265,68 @@
                 };
 
                 btnCancel.onclick = () => { cleanup(); resolve(null); };
-                btnConfirm.onclick = () => { 
-                    cleanup(); 
-                    resolve(options.type === 'prompt' ? input.value : true); 
-                };
+                btnConfirm.onclick = () => { cleanup(); resolve(options.type === 'prompt' ? input.value : true); };
             });
         }
 
-        // --- 3. COMPANY BRANDING (Confirm First) ---
-        async function updateCompany() {
-            const company = document.getElementById('companyInput').value;
-            if(!company) return;
+        // --- Company Details Modal Logic ---
+        async function openCompanyModal() {
+            const response = await fetch('/get-company');
+            const data = await response.json();
+            
+            document.getElementById('company-name-input').value = data.company !== 'Placement Drive' ? data.company : '';
+            document.getElementById('drive-date-input').value = data.date || '';
+            
+            document.getElementById('company-details-modal').classList.remove('hidden');
+        }
 
-            const confirmChange = await showModal({
-                title: "Update Branding?",
-                desc: `Change the dashboard title to "${company}"?`,
-                confirmText: "Update"
+        function closeCompanyModal() {
+            document.getElementById('company-details-modal').classList.add('hidden');
+        }
+
+        async function saveCompanyDetails() {
+            const company = document.getElementById('company-name-input').value || 'Placement Drive';
+            const date = document.getElementById('drive-date-input').value;
+            
+            await fetch('/set-company', { 
+                method: 'POST', 
+                headers: {'Content-Type':'application/json'}, 
+                body: JSON.stringify({ company, date }) 
             });
+            
+            document.getElementById('stat-company').innerText = company;
+            closeCompanyModal();
+        }
 
-            if(confirmChange) {
-                await fetch('/set-company', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ company }) });
-                document.getElementById('stat-company').innerText = company; 
-                await showModal({
-                    title: "Branding Updated",
-                    desc: "The dashboard title has been changed successfully.",
-                    confirmText: "Got it",
-                    infoOnly: true 
-                });
+        function openAddCandidateModal() {
+            document.getElementById('prn').value = '';
+            document.getElementById('name').value = '';
+            document.getElementById('branch').value = '';
+            document.getElementById('room').value = '';
+            document.getElementById('add-candidate-modal').classList.remove('hidden');
+        }
+
+        function closeAddCandidateModal() {
+            document.getElementById('add-candidate-modal').classList.add('hidden');
+        }
+
+        async function addStudent() {
+            const prn = document.getElementById('prn').value || 'N/A';
+            const rawName = document.getElementById('name').value;
+            const branch = document.getElementById('branch').value || 'N/A';
+            const room = document.getElementById('room').value;
+            
+            if(rawName.trim() !== '') {
+                const formattedName = toTitleCase(rawName);
+                await fetch('/add-student', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ prn, name: formattedName, branch, room, status: 'unmarked' }) });
+                closeAddCandidateModal();
+                loadQueue();
+            } else {
+                alert("Name is required!");
             }
         }
 
-
-        async function clearCompany() { const defaultName = "Placement Drive"; await fetch('/set-company', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ company: defaultName }) }); document.getElementById('companyInput').value = ''; document.getElementById('stat-company').innerText = defaultName; }
-
-        // --- 4. EXCEL UPLOAD LOGIC ---
+        // --- Bulletproof Excel Parsing (Strict Matching) ---
         function handleExcelUpload() {
             const fileInput = document.getElementById('excelFile');
             const statusDiv = document.getElementById('uploadStatus');
@@ -350,92 +340,66 @@
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
-                    const firstSheet = workbook.SheetNames[0];
-                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
-                    
+                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
                     let studentsToUpload = [];
 
                     for(let row of jsonData) {
-                        const getVal = (obj, keys) => {
-                            const foundKey = Object.keys(obj).find(k => keys.includes(k.trim().toLowerCase()));
+                        const getStrictVal = (obj, exactKeys) => {
+                            const foundKey = Object.keys(obj).find(k => exactKeys.includes(k.trim().toLowerCase()));
                             return foundKey ? obj[foundKey] : null;
                         };
-                        const prn = getVal(row, ['prn', 'id', 'roll number', 'roll no', 'id number']) || "N/A";
-                        const name = getVal(row, ['name', 'candidate name', 'student name', 'candidate']);
-                        const room = getVal(row, ['room', 'path', 'location', 'rounds']) || "Waiting Area";
-                        if(name) studentsToUpload.push({ prn: String(prn), name: String(name), room: String(room) });
+                        
+                        const prn = getStrictVal(row, ['prn', 'id', 'rollno']) || "N/A";
+                        const rawName = getStrictVal(row, ['name', 'student name']);
+                        const branch = getStrictVal(row, ['branch', 'department', 'dept']) || "N/A";
+                        const room = getStrictVal(row, ['room', 'interview line', 'interview', 'location']) || "Waiting Area";
+                        
+                        if(rawName && String(rawName).trim() !== "") {
+                            studentsToUpload.push({ 
+                                prn: String(prn).trim(), 
+                                name: toTitleCase(String(rawName).trim()), 
+                                branch: String(branch).trim(), 
+                                room: String(room).trim(),
+                                status: 'unmarked' 
+                            });
+                        }
                     }
 
                     if (studentsToUpload.length > 0) {
-                        const confirmUpload = await showModal({
-                            title: "Confirm Upload",
-                            desc: `Found ${studentsToUpload.length} candidates in the Excel file. Add them to the live queue?`,
-                            confirmText: "Upload Now"
+                        const confirmUpload = await showModal({ 
+                            title: "Confirm Upload", 
+                            desc: `Found ${studentsToUpload.length} candidates. Inject into pipeline?`, 
+                            confirmText: "Upload Now" 
                         });
-
+                        
                         if (confirmUpload) {
-                            statusDiv.innerText = "Processing...";
-                            const response = await fetch('/add-bulk-students', { 
+                            statusDiv.innerText = "Processing pipeline...";
+                            await fetch('/add-bulk-students', { 
                                 method: 'POST', 
                                 headers: {'Content-Type':'application/json'}, 
                                 body: JSON.stringify({ students: studentsToUpload }) 
                             });
-
-                            if (!response.ok) throw new Error("Server rejected the upload");
-
-                            statusDiv.innerText = "Done!";
-                            await showModal({
-                                title: "Upload Successful",
-                                desc: `✅ Added ${studentsToUpload.length} candidates to the queue.`,
-                                confirmText: "Perfect",
-                                infoOnly: true 
-                            });
-                        } else {
-                            statusDiv.innerText = ""; 
+                            statusDiv.innerText = "Upload Complete!";
+                            setTimeout(() => statusDiv.innerText = "", 3000);
                         }
-                        
                     } else {
-                        statusDiv.innerText = ""; 
-                        await showModal({
-                            title: "No Data Found",
-                            desc: "We couldn't find any candidate names in that file.",
-                            confirmText: "Close",
-                            infoOnly: true
+                        await showModal({ 
+                            title: "Data Error", 
+                            desc: "Could not locate an exact 'Name' or 'Student Name' header column. Please check your Excel formatting.", 
+                            infoOnly: true 
                         });
                     }
-
                 } catch (err) {
-                    console.error(err);
-                    statusDiv.innerText = ""; 
-                    await showModal({
-                        title: "Upload Failed",
-                        desc: "Error: " + err.message + ". (Press F12 and check the console for more details.)",
-                        confirmText: "Close",
-                        infoOnly: true
-                    });
+                    await showModal({ title: "Upload Failed", desc: "Error: " + err.message, infoOnly: true });
                 } finally {
-                    fileInput.value = "";     
-                    loadQueue();              
+                    fileInput.value = ""; 
+                    loadQueue();
                 }
             };
             reader.readAsArrayBuffer(file);
         }
 
-        // --- 5. MANUAL ADD (No Confirmation) ---
-        async function addStudent() {
-            const prn = document.getElementById('prn').value || 'N/A';
-            const name = document.getElementById('name').value;
-            const room = document.getElementById('room').value;
-            if(name) {
-                await fetch('/add-student', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ prn, name, room }) });
-                document.getElementById('prn').value = ''; 
-                document.getElementById('name').value = ''; 
-                document.getElementById('room').value = ''; 
-                loadQueue();
-            }
-        }
-
-        // --- 6. LOAD QUEUE & ACTIONS ---
+        // --- Core Queue Logic ---
         async function loadQueue() {
             try {
                 const res = await fetch('/get-queue');
@@ -444,47 +408,114 @@
                 list.innerHTML = '';
 
                 const activeCount = data.filter(s => s.status && s.status.toLowerCase() === 'interviewing').length;
-                const waitingCount = data.filter(s => s.status && s.status.toLowerCase() === 'waiting').length;
+                const waitingCount = data.filter(s => s.status && (s.status.toLowerCase() === 'waiting' || s.status.toLowerCase() === 'hold')).length;
 
                 document.getElementById('stat-total').innerText = data.length;
                 document.getElementById('stat-active').innerText = activeCount;
                 document.getElementById('stat-waiting').innerText = waitingCount;
 
                 if(data.length === 0) {
-                    list.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">Queue is empty</td></tr>';
+                    list.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:3rem; color:var(--text-muted); font-size: 1.1rem;">Pipeline is empty. Add candidates to begin.</td></tr>';
                     return;
                 }
 
+                // Clean SVG Icons for Attendance
+                const tickSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                const crossSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+
                 data.forEach((s, i) => {
-                    const currentStatus = s.status ? s.status.toLowerCase() : '';
+                    const currentStatus = s.status ? s.status.toLowerCase() : 'unmarked';
+                    const isCompletedPath = s.currentStep >= s.path.length;
+                    const isDone = (isCompletedPath || currentStatus === 'completed' || currentStatus === 'rejected');
+                    
                     const pathDisplay = s.path.map((room, idx) => {
-                        if (idx === s.currentStep) return `<b style="color:var(--accent); text-decoration:underline;">${room}</b>`;
+                        if (idx === s.currentStep && !isDone) 
+                            return `<b style="color:var(--accent); text-decoration:underline;">${room}</b>`;
                         return `<span style="opacity:0.5;">${room}</span>`;
                     }).join(' → ');
 
-                    let btn = '';
-                    if (currentStatus === 'waiting') {
-                        btn = `<button type="button" class="btn-call" onclick="sendAction(${i}, 'call')">📢 Call In</button>`;
-                    } else if (currentStatus === 'interviewing') {
-                        btn = `<div style="display:flex; gap:5px; justify-content:flex-end;">
-                                <button type="button" class="btn-done" style="background:var(--success); color:white; border:none;" onclick="sendAction(${i}, 'pass')">✅ Select</button>
-                                <button type="button" class="btn-del" style="background:var(--danger); color:white; border:none;" onclick="sendAction(${i}, 'fail')">👎 Reject</button>
-                               </div>`;
+                    // 1. Determine Status Badge
+                    let badgeClass = 'badge-unmarked';
+                    let statusText = 'Unmarked';
+                    
+                    if (isDone) {
+                        // User requested no special tint if rejected midway, just "Completed"
+                        badgeClass = 'badge-completed'; 
+                        statusText = 'Completed'; 
+                    }
+                    else if (currentStatus === 'waiting') { badgeClass = 'badge-waiting'; statusText = 'Waiting'; }
+                    else if (currentStatus === 'interviewing') { badgeClass = 'badge-interviewing'; statusText = 'Inside Room'; }
+                    else if (currentStatus === 'absent') { badgeClass = 'badge-absent'; statusText = 'Absent'; }
+                    else if (currentStatus === 'hold') { badgeClass = 'badge-hold'; statusText = 'On Hold'; }
+
+                    // 2. Build Attendance Column (Clean SVGs)
+                    const isPresent = ['waiting', 'interviewing', 'hold', 'completed', 'rejected'].includes(currentStatus);
+                    const isAbsent = currentStatus === 'absent';
+                    const isUnmarked = currentStatus === 'unmarked';
+
+                    const presentOpacity = isPresent ? '1' : (isUnmarked ? '0.5' : '0.15');
+                    const absentOpacity = isAbsent ? '1' : (isUnmarked ? '0.5' : '0.15');
+
+                    const attendanceHtml = `
+                        <div style="display:flex; justify-content:center; gap:10px;">
+                            <button type="button" title="Present" style="background:var(--success); color:white; border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:${presentOpacity}; transition:0.2s;" onclick="sendAction(${i}, 'waiting')">${tickSvg}</button>
+                            <button type="button" title="Absent" style="background:var(--danger); color:white; border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:${absentOpacity}; transition:0.2s;" onclick="sendAction(${i}, 'absent')">${crossSvg}</button>
+                        </div>
+                    `;
+
+                    // 3. Build Update Status Column
+                    let updateStatusHtml = '';
+                    if (isDone) {
+                        if (s.finalStatus) {
+                            updateStatusHtml = `
+                                <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                                    <span style="font-weight:bold; color:var(--text-main); font-size:0.95rem;">${s.finalStatus}</span>
+                                    <button type="button" title="Edit Final Status" onclick="setFinalStatus(${i})" style="background:none; border:none; cursor:pointer; font-size:1.1rem; opacity:0.8; transition:0.2s;">✏️</button>
+                                </div>`;
+                        } else {
+                            updateStatusHtml = `<button type="button" class="btn-primary" onclick="setFinalStatus(${i})" style="width:100%; max-width:140px; padding:8px 0; font-size:0.85rem; border-radius:8px;">Set Final Status</button>`;
+                        }
+                    } 
+                    else if (currentStatus === 'waiting') {
+                        updateStatusHtml = `<button type="button" class="btn-call" style="padding:6px 14px !important; font-size:0.8rem !important; width:100%; max-width:120px;" onclick="sendAction(${i}, 'call')">📢 Call In</button>`;
+                    } 
+                    else if (currentStatus === 'hold') {
+                        updateStatusHtml = `<button type="button" class="btn-call" style="background:var(--success); padding:6px 14px !important; font-size:0.8rem !important; width:100%; max-width:120px;" onclick="sendAction(${i}, 'call')">▶️ Resume</button>`;
+                    } 
+                    else if (currentStatus === 'interviewing') {
+                        updateStatusHtml = `
+                            <div style="display:flex; justify-content:center; gap:4px; width:100%;">
+                                <button type="button" class="btn-done" style="padding:6px 8px !important; font-size:0.75rem !important; flex:1;" onclick="sendAction(${i}, 'pass')">Pass</button>
+                                <button type="button" class="btn-del" style="padding:6px 8px !important; font-size:0.75rem !important; flex:1;" onclick="sendAction(${i}, 'fail')">Reject</button>
+                                <button type="button" style="background:var(--warning); color:black; border:none; border-radius:50px; padding:6px 8px; font-weight:bold; cursor:pointer; font-size:0.75rem; flex:1;" onclick="sendAction(${i}, 'hold')">Hold</button>
+                            </div>
+                        `;
+                    } 
+                    else {
+                        // Unmarked or Absent state
+                        updateStatusHtml = `<span style="color:var(--text-muted); font-size:0.8rem; font-style:italic;">Candidate Absent</span>`;
+                        if(currentStatus === 'unmarked') {
+                           updateStatusHtml = `<span style="color:var(--text-muted); font-size:0.8rem; font-style:italic;">Awaiting Attendance</span>`;
+                        }
                     }
 
+                    // 4. Build Actions Column (Permanent Actions)
+                    const actionsHtml = `
+                        <div style="display:flex; align-items:center; justify-content:center; gap:12px;">
+                            <button type="button" title="Rewrite Path" onclick="editPath(${i})" style="background:none; border:none; cursor:pointer; font-size:1.2rem; opacity:0.7; transition:0.2s;">✏️</button>
+                            <button type="button" title="Remove Candidate" onclick="remove(${i})" style="background:none; border:none; cursor:pointer; font-size:1.3rem; color:var(--danger); font-weight:bold; opacity:0.7; transition:0.2s;">✕</button>
+                        </div>
+                    `;
+
                     list.innerHTML += `<tr>
-                        <td>${i+1}</td> 
                         <td style="font-family: monospace; color: var(--text-muted); letter-spacing: 0.5px;">${s.prn || 'N/A'}</td>
-                        <td style="font-weight:800;">${s.name}</td>
+                        <td class="align-left" style="font-weight:800;">${s.name}</td>
+                        <td style="color:var(--text-muted); font-size:0.9rem;">${s.branch || 'N/A'}</td>
                         <td style="font-family: monospace;">${pathDisplay}</td>
-                        <td><span class="badge ${currentStatus === 'waiting' ? 'badge-waiting' : 'badge-interviewing'}">${currentStatus === 'waiting' ? 'Waiting' : 'Inside Room'}</span></td>
-                        <td style="text-align:right;">
-                            <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px;">
-                                ${btn} 
-                                <button type="button" title="Edit Path" onclick="editPath(${i})" style="background:none; border:none; cursor:pointer; font-size:1.3rem; opacity:0.9; transition:0.2s;">✏️</button>
-                                <button type="button" title="Remove Student" onclick="remove(${i})" style="background:none; border:none; cursor:pointer; font-size:1.4rem; color:#ff4d4d; font-weight:bold; opacity:0.9; transition:0.2s;">✕</button>
-                            </div>
-                        </td>
+                        <td><span class="badge ${badgeClass}">${statusText}</span></td>
+                        <td>${attendanceHtml}</td>
+                        <td>${updateStatusHtml}</td>
+                        <td>${actionsHtml}</td>
                     </tr>`;
                 });
                 filterQueue();
@@ -496,19 +527,27 @@
             loadQueue(); 
         }
 
-        async function remove(i) { 
-            const confirmDel = await showModal({
-                title: "Remove Candidate?",
-                desc: "Are you sure you want to remove this student from the active queue?",
-                type: 'confirm',
-                danger: true,
-                confirmText: "Remove"
+        async function setFinalStatus(index) {
+            const finalStatus = await showModal({
+                title: "Set Final Status",
+                desc: "Enter the final result (e.g., Placed, Waitlisted, Not Selected):",
+                type: 'prompt',
+                confirmText: "Save Status"
             });
 
-            if(confirmDel) { 
-                await fetch(`/remove-student/${i}`, { method: 'DELETE' }); 
-                loadQueue(); 
-            } 
+            if (finalStatus !== null && finalStatus.trim() !== "") {
+                await fetch('/update-final-status', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ index, finalStatus }) 
+                });
+                loadQueue();
+            }
+        }
+
+        async function remove(i) { 
+            const confirmDel = await showModal({ title: "Remove Candidate?", desc: "Are you sure you want to completely remove this candidate from the pipeline?", type: 'confirm', danger: true, confirmText: "Remove" });
+            if(confirmDel) { await fetch(`/remove-student/${i}`, { method: 'DELETE' }); loadQueue(); } 
         }
 
         async function editPath(index) {
@@ -517,14 +556,7 @@
             const student = data[index];
             const currentPathString = student.path.join(', ');
             
-            const newPath = await showModal({
-                title: `Edit Path: ${student.name}`,
-                desc: "Update the interview rooms (comma separated):",
-                type: 'prompt',
-                defaultVal: currentPathString,
-                confirmText: "Save Path"
-            });
-
+            const newPath = await showModal({ title: `Edit Path: ${student.name}`, desc: "Update the interview rooms (comma separated):", type: 'prompt', defaultVal: currentPathString, confirmText: "Save Path" });
             if (newPath !== null && newPath.trim() !== "") {
                 await fetch('/edit-student', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ index, newPath }) });
                 loadQueue();
@@ -532,39 +564,10 @@
         }
 
         async function resetSystem() {
-            const confirmFirst = await showModal({
-                title: "🚨 System Reset",
-                desc: "This will permanently delete ALL candidates and history. This cannot be undone.",
-                type: 'confirm',
-                danger: true,
-                confirmText: "Proceed to Delete"
-            });
-            
+            const confirmFirst = await showModal({ title: "🚨 System Reset", desc: "Permanently delete ALL candidates and wipe the drive?", type: 'confirm', danger: true, confirmText: "Proceed" });
             if (confirmFirst) {
-                const password = await showModal({
-                    title: "Confirm Deletion",
-                    desc: "Type the word RESET to confirm:",
-                    type: 'prompt',
-                    danger: true,
-                    confirmText: "Wipe System"
-                });
-                
-                if (password === 'RESET') {
-                    await fetch('/reset-all', { method: 'POST' });
-                    loadQueue(); 
-                }
-            }
-        }
-
-        // --- 7. SIDEBAR TOGGLE ---
-        function toggleSidebar() {
-            const sidebar = document.querySelector('.sidebar');
-            if (window.innerWidth <= 768) {
-                sidebar.classList.toggle('open');
-            } else {
-                sidebar.classList.toggle('collapsed');
-                const isCollapsed = sidebar.classList.contains('collapsed');
-                localStorage.setItem('sidebarCollapsed', isCollapsed);
+                const password = await showModal({ title: "Confirm Wipe", desc: "Type the word RESET to confirm:", type: 'prompt', danger: true, confirmText: "Wipe System" });
+                if (password === 'RESET') { await fetch('/reset-all', { method: 'POST' }); loadQueue(); }
             }
         }
         
@@ -574,7 +577,7 @@
             const query = document.getElementById('adminSearch').value.toLowerCase().trim();
             const rows = document.querySelectorAll('#adminList tr');
             rows.forEach(row => {
-                const nameCell = row.cells[2]; // Updated index because PRN is now cell 1
+                const nameCell = row.cells[1]; 
                 if (nameCell) row.style.display = nameCell.textContent.toLowerCase().includes(query) ? "" : "none";
             });
         }
