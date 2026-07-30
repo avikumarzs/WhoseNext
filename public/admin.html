@@ -113,6 +113,9 @@
 
             <h3 style="color:var(--text-main);">Add Candidate</h3>
             <div class="input-group">
+                <label>PRN / ID</label> <input type="text" id="prn" placeholder="123456789012">
+            </div>
+            <div class="input-group">
                 <label>Name</label> <input type="text" id="name" placeholder="John Doe">
             </div>
             <div class="input-group">
@@ -170,6 +173,7 @@
                 <thead>
                     <tr>
                         <th>#</th> 
+                        <th style="min-width: 130px;">PRN</th>
                         <th>Name</th> 
                         <th>Interview Path</th> <th>Status</th> 
                         <th style="text-align: right;">Actions</th>
@@ -356,9 +360,10 @@
                             const foundKey = Object.keys(obj).find(k => keys.includes(k.trim().toLowerCase()));
                             return foundKey ? obj[foundKey] : null;
                         };
+                        const prn = getVal(row, ['prn', 'id', 'roll number', 'roll no', 'id number']) || "N/A";
                         const name = getVal(row, ['name', 'candidate name', 'student name', 'candidate']);
                         const room = getVal(row, ['room', 'path', 'location', 'rounds']) || "Waiting Area";
-                        if(name) studentsToUpload.push({ name: String(name), room: String(room) });
+                        if(name) studentsToUpload.push({ prn: String(prn), name: String(name), room: String(room) });
                     }
 
                     if (studentsToUpload.length > 0) {
@@ -418,10 +423,12 @@
 
         // --- 5. MANUAL ADD (No Confirmation) ---
         async function addStudent() {
+            const prn = document.getElementById('prn').value || 'N/A';
             const name = document.getElementById('name').value;
             const room = document.getElementById('room').value;
             if(name) {
-                await fetch('/add-student', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, room }) });
+                await fetch('/add-student', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ prn, name, room }) });
+                document.getElementById('prn').value = ''; 
                 document.getElementById('name').value = ''; 
                 document.getElementById('room').value = ''; 
                 loadQueue();
@@ -444,7 +451,7 @@
                 document.getElementById('stat-waiting').innerText = waitingCount;
 
                 if(data.length === 0) {
-                    list.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">Queue is empty</td></tr>';
+                    list.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">Queue is empty</td></tr>';
                     return;
                 }
 
@@ -467,6 +474,7 @@
 
                     list.innerHTML += `<tr>
                         <td>${i+1}</td> 
+                        <td style="font-family: monospace; color: var(--text-muted); letter-spacing: 0.5px;">${s.prn || 'N/A'}</td>
                         <td style="font-weight:800;">${s.name}</td>
                         <td style="font-family: monospace;">${pathDisplay}</td>
                         <td><span class="badge ${currentStatus === 'waiting' ? 'badge-waiting' : 'badge-interviewing'}">${currentStatus === 'waiting' ? 'Waiting' : 'Inside Room'}</span></td>
@@ -566,7 +574,7 @@
             const query = document.getElementById('adminSearch').value.toLowerCase().trim();
             const rows = document.querySelectorAll('#adminList tr');
             rows.forEach(row => {
-                const nameCell = row.cells[1];
+                const nameCell = row.cells[2]; // Updated index because PRN is now cell 1
                 if (nameCell) row.style.display = nameCell.textContent.toLowerCase().includes(query) ? "" : "none";
             });
         }
