@@ -120,6 +120,7 @@
         
         <!-- Sleek Icon Action Bar -->
         <div style="display: flex; gap: 12px; align-items: center;">
+            <button class="icon-btn" onclick="toggleStats()" title="Toggle Statistics">📊</button>
             <button class="icon-btn" onclick="openCompanyModal()" title="Set Company Details">🏢</button>
             <button class="icon-btn" onclick="openAddCandidateModal()" title="Add Candidate">➕</button>
             <label class="icon-btn" title="Upload Excel" style="cursor: pointer; margin: 0;">
@@ -137,25 +138,28 @@
 
     <div class="dashboard-container">
         
-        <div id="uploadStatus" style="font-size: 0.9rem; color: var(--accent); text-align: center; margin-top: 15px; margin-bottom: 15px; height: 15px;"></div>
+        <div id="uploadStatus" style="font-size: 0.9rem; color: var(--accent); text-align: center; padding-bottom: 10px;"></div>
 
         <div class="main-content">
-            <div class="stats-container" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
-                <div class="stat-card">
-                    <span class="label">Total in Queue</span>
-                    <span class="value" id="stat-total">0</span>
-                </div>
-                <div class="stat-card" style="border-top: 4px solid var(--success);">
-                    <span class="label">Interviewing</span>
-                    <span class="value" id="stat-active">0</span>
-                </div>
-                <div class="stat-card" style="border-top: 4px solid var(--warning);">
-                    <span class="label">Waiting</span>
-                    <span class="value" id="stat-waiting">0</span>
-                </div>
-                <div class="stat-card" style="border-top: 4px solid var(--primary);">
-                    <span class="label">Current Drive</span>
-                    <span class="value" id="stat-company" style="font-size: 1.1rem; line-height: 2.2;">-</span>
+            <!-- Feature 4: Collapsible Stats Section -->
+            <div id="stats-container" style="display: none;">
+                <div class="stats-container" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                    <div class="stat-card">
+                        <span class="label">Total in Queue</span>
+                        <span class="value" id="stat-total">0</span>
+                    </div>
+                    <div class="stat-card" style="border-top: 4px solid var(--success);">
+                        <span class="label">Interviewing</span>
+                        <span class="value" id="stat-active">0</span>
+                    </div>
+                    <div class="stat-card" style="border-top: 4px solid var(--warning);">
+                        <span class="label">Waiting</span>
+                        <span class="value" id="stat-waiting">0</span>
+                    </div>
+                    <div class="stat-card" style="border-top: 4px solid var(--primary);">
+                        <span class="label">Current Drive</span>
+                        <span class="value" id="stat-company" style="font-size: 1.1rem; line-height: 2.2;">-</span>
+                    </div>
                 </div>
             </div>
 
@@ -174,14 +178,13 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th style="width: 10%;">PRN</th>
-                        <th class="align-left" style="width: 18%;">Name</th> 
-                        <th style="width: 8%;">Branch</th>
-                        <th style="width: 15%;">Interview Path</th> 
-                        <th style="width: 10%;">Status</th> 
+                        <th style="width: 13%;">PRN</th>
+                        <th class="align-left" style="width: 20%;">Name</th> 
+                        <th style="width: 7%;">Branch</th>
+                        <th style="width: 20%;">Interview Path</th> 
+                        <th style="width: 15%;">Status</th> 
                         <th style="width: 10%;">Attendance</th>
-                        <th style="width: 19%;">Update Status</th>
-                        <th style="width: 10%;">Actions</th>
+                        <th style="width: 15%;">Manage</th>
                     </tr>
                 </thead>
                 <tbody id="adminList"></tbody>
@@ -190,400 +193,33 @@
         </div>
     </div>
 
-    <script>
-        // --- Helper Function: Title Case Formatter ---
-        function toTitleCase(str) {
-            if (!str) return '';
-            return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-        }
-
-        async function initializeDashboard() {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') {
-                document.body.classList.add('dark-mode');
-                const toggleBtn = document.querySelector('.theme-toggle');
-                if (toggleBtn) toggleBtn.innerText = '☀️';
-            }
-
-            try {
-                async function getCompany() {
-                    const response = await fetch('/get-company');
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data && data.company) {
-                           document.getElementById('stat-company').innerText = data.company;
-                        }
-                    }
-                }
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000));
-                await Promise.race([Promise.all([getCompany(), loadQueue()]), timeoutPromise]);
-            } catch (error) { console.error('Init failed:', error); }
-        }
+    <script src="/js/admin.js"></script>
+    <!-- Slide-Out Control Panel -->
+    <div id="panel-overlay" class="panel-overlay hidden" onclick="closePanel()"></div>
+    <div id="control-panel" class="side-panel hidden">
+        <div class="panel-header">
+            <div>
+                <h3 id="panel-name" style="margin: 0; font-size: 1.4rem;">Candidate Name</h3>
+                <span id="panel-room" style="color: var(--accent); font-weight: 700; font-size: 0.85rem;">Inside Room</span>
+            </div>
+            <button class="btn-close-panel" onclick="closePanel()">✕</button>
+        </div>
         
-        initializeDashboard();
+        <div class="panel-content">
+            <div class="panel-section">
+                <h4 style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 10px;">Progress Actions</h4>
+                <div id="panel-status-actions" style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Action buttons injected here via JS -->
+                </div>
+            </div>
 
-        function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            const isDark = document.body.classList.contains('dark-mode');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            document.querySelector('.theme-toggle').innerText = isDark ? '☀️' : '🌙';
-        }
-
-        // --- Core Modal Logic ---
-        function showModal(options) {
-            return new Promise((resolve) => {
-                const overlay = document.getElementById('custom-modal');
-                const title = document.getElementById('modal-title');
-                const desc = document.getElementById('modal-desc');
-                const input = document.getElementById('modal-input');
-                const btnCancel = document.getElementById('modal-cancel');
-                const btnConfirm = document.getElementById('modal-confirm');
-
-                title.innerText = options.title;
-                desc.innerText = options.desc || '';
-                
-                if (options.type === 'prompt') {
-                    input.style.display = 'block';
-                    input.value = options.defaultVal || '';
-                    setTimeout(() => input.focus(), 100); 
-                } else {
-                    input.style.display = 'none';
-                }
-
-                if (options.infoOnly) btnCancel.style.display = 'none';
-                else btnCancel.style.display = 'inline-block';
-
-                btnConfirm.innerText = options.confirmText || 'Confirm';
-                btnConfirm.style.background = options.danger ? 'var(--danger)' : 'var(--primary)';
-
-                overlay.classList.remove('hidden');
-
-                const cleanup = () => {
-                    overlay.classList.add('hidden');
-                    btnConfirm.onclick = null;
-                    btnCancel.onclick = null;
-                };
-
-                btnCancel.onclick = () => { cleanup(); resolve(null); };
-                btnConfirm.onclick = () => { cleanup(); resolve(options.type === 'prompt' ? input.value : true); };
-            });
-        }
-
-        // --- Company Details Modal Logic ---
-        async function openCompanyModal() {
-            const response = await fetch('/get-company');
-            const data = await response.json();
-            
-            document.getElementById('company-name-input').value = data.company !== 'Placement Drive' ? data.company : '';
-            document.getElementById('drive-date-input').value = data.date || '';
-            
-            document.getElementById('company-details-modal').classList.remove('hidden');
-        }
-
-        function closeCompanyModal() {
-            document.getElementById('company-details-modal').classList.add('hidden');
-        }
-
-        async function saveCompanyDetails() {
-            const company = document.getElementById('company-name-input').value || 'Placement Drive';
-            const date = document.getElementById('drive-date-input').value;
-            
-            await fetch('/set-company', { 
-                method: 'POST', 
-                headers: {'Content-Type':'application/json'}, 
-                body: JSON.stringify({ company, date }) 
-            });
-            
-            document.getElementById('stat-company').innerText = company;
-            closeCompanyModal();
-        }
-
-        function openAddCandidateModal() {
-            document.getElementById('prn').value = '';
-            document.getElementById('name').value = '';
-            document.getElementById('branch').value = '';
-            document.getElementById('room').value = '';
-            document.getElementById('add-candidate-modal').classList.remove('hidden');
-        }
-
-        function closeAddCandidateModal() {
-            document.getElementById('add-candidate-modal').classList.add('hidden');
-        }
-
-        async function addStudent() {
-            const prn = document.getElementById('prn').value || 'N/A';
-            const rawName = document.getElementById('name').value;
-            const branch = document.getElementById('branch').value || 'N/A';
-            const room = document.getElementById('room').value;
-            
-            if(rawName.trim() !== '') {
-                const formattedName = toTitleCase(rawName);
-                await fetch('/add-student', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ prn, name: formattedName, branch, room, status: 'unmarked' }) });
-                closeAddCandidateModal();
-                loadQueue();
-            } else {
-                alert("Name is required!");
-            }
-        }
-
-        // --- Bulletproof Excel Parsing (Strict Matching) ---
-        function handleExcelUpload() {
-            const fileInput = document.getElementById('excelFile');
-            const statusDiv = document.getElementById('uploadStatus');
-            if (fileInput.files.length === 0) return;
-            
-            const file = fileInput.files[0];
-            statusDiv.innerText = "Reading file..."; 
-            
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, {type: 'array'});
-                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
-                    let studentsToUpload = [];
-
-                    for(let row of jsonData) {
-                        const getStrictVal = (obj, exactKeys) => {
-                            const foundKey = Object.keys(obj).find(k => exactKeys.includes(k.trim().toLowerCase()));
-                            return foundKey ? obj[foundKey] : null;
-                        };
-                        
-                        const prn = getStrictVal(row, ['prn', 'id', 'rollno']) || "N/A";
-                        const rawName = getStrictVal(row, ['name', 'student name']);
-                        const branch = getStrictVal(row, ['branch', 'department', 'dept']) || "N/A";
-                        const room = getStrictVal(row, ['room', 'interview line', 'interview', 'location']) || "Waiting Area";
-                        
-                        if(rawName && String(rawName).trim() !== "") {
-                            studentsToUpload.push({ 
-                                prn: String(prn).trim(), 
-                                name: toTitleCase(String(rawName).trim()), 
-                                branch: String(branch).trim(), 
-                                room: String(room).trim(),
-                                status: 'unmarked' 
-                            });
-                        }
-                    }
-
-                    if (studentsToUpload.length > 0) {
-                        const confirmUpload = await showModal({ 
-                            title: "Confirm Upload", 
-                            desc: `Found ${studentsToUpload.length} candidates. Inject into pipeline?`, 
-                            confirmText: "Upload Now" 
-                        });
-                        
-                        if (confirmUpload) {
-                            statusDiv.innerText = "Processing pipeline...";
-                            await fetch('/add-bulk-students', { 
-                                method: 'POST', 
-                                headers: {'Content-Type':'application/json'}, 
-                                body: JSON.stringify({ students: studentsToUpload }) 
-                            });
-                            statusDiv.innerText = "Upload Complete!";
-                            setTimeout(() => statusDiv.innerText = "", 3000);
-                        }
-                    } else {
-                        await showModal({ 
-                            title: "Data Error", 
-                            desc: "Could not locate an exact 'Name' or 'Student Name' header column. Please check your Excel formatting.", 
-                            infoOnly: true 
-                        });
-                    }
-                } catch (err) {
-                    await showModal({ title: "Upload Failed", desc: "Error: " + err.message, infoOnly: true });
-                } finally {
-                    fileInput.value = ""; 
-                    loadQueue();
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        // --- Core Queue Logic ---
-        async function loadQueue() {
-            try {
-                const res = await fetch('/get-queue');
-                const data = await res.json();
-                const list = document.getElementById('adminList');
-                list.innerHTML = '';
-
-                const activeCount = data.filter(s => s.status && s.status.toLowerCase() === 'interviewing').length;
-                const waitingCount = data.filter(s => s.status && (s.status.toLowerCase() === 'waiting' || s.status.toLowerCase() === 'hold')).length;
-
-                document.getElementById('stat-total').innerText = data.length;
-                document.getElementById('stat-active').innerText = activeCount;
-                document.getElementById('stat-waiting').innerText = waitingCount;
-
-                if(data.length === 0) {
-                    list.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:3rem; color:var(--text-muted); font-size: 1.1rem;">Pipeline is empty. Add candidates to begin.</td></tr>';
-                    return;
-                }
-
-                // Clean SVG Icons for Attendance
-                const tickSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-                const crossSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
-
-                data.forEach((s, i) => {
-                    const currentStatus = s.status ? s.status.toLowerCase() : 'unmarked';
-                    const isCompletedPath = s.currentStep >= s.path.length;
-                    const isDone = (isCompletedPath || currentStatus === 'completed' || currentStatus === 'rejected');
-                    
-                    const pathDisplay = s.path.map((room, idx) => {
-                        if (idx === s.currentStep && !isDone) 
-                            return `<b style="color:var(--accent); text-decoration:underline;">${room}</b>`;
-                        return `<span style="opacity:0.5;">${room}</span>`;
-                    }).join(' → ');
-
-                    // 1. Determine Status Badge
-                    let badgeClass = 'badge-unmarked';
-                    let statusText = 'Unmarked';
-                    
-                    if (isDone) {
-                        // User requested no special tint if rejected midway, just "Completed"
-                        badgeClass = 'badge-completed'; 
-                        statusText = 'Completed'; 
-                    }
-                    else if (currentStatus === 'waiting') { badgeClass = 'badge-waiting'; statusText = 'Waiting'; }
-                    else if (currentStatus === 'interviewing') { badgeClass = 'badge-interviewing'; statusText = 'Inside Room'; }
-                    else if (currentStatus === 'absent') { badgeClass = 'badge-absent'; statusText = 'Absent'; }
-                    else if (currentStatus === 'hold') { badgeClass = 'badge-hold'; statusText = 'On Hold'; }
-
-                    // 2. Build Attendance Column (Clean SVGs)
-                    const isPresent = ['waiting', 'interviewing', 'hold', 'completed', 'rejected'].includes(currentStatus);
-                    const isAbsent = currentStatus === 'absent';
-                    const isUnmarked = currentStatus === 'unmarked';
-
-                    const presentOpacity = isPresent ? '1' : (isUnmarked ? '0.5' : '0.15');
-                    const absentOpacity = isAbsent ? '1' : (isUnmarked ? '0.5' : '0.15');
-
-                    const attendanceHtml = `
-                        <div style="display:flex; justify-content:center; gap:10px;">
-                            <button type="button" title="Present" style="background:var(--success); color:white; border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:${presentOpacity}; transition:0.2s;" onclick="sendAction(${i}, 'waiting')">${tickSvg}</button>
-                            <button type="button" title="Absent" style="background:var(--danger); color:white; border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:${absentOpacity}; transition:0.2s;" onclick="sendAction(${i}, 'absent')">${crossSvg}</button>
-                        </div>
-                    `;
-
-                    // 3. Build Update Status Column
-                    let updateStatusHtml = '';
-                    if (isDone) {
-                        if (s.finalStatus) {
-                            updateStatusHtml = `
-                                <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
-                                    <span style="font-weight:bold; color:var(--text-main); font-size:0.95rem;">${s.finalStatus}</span>
-                                    <button type="button" title="Edit Final Status" onclick="setFinalStatus(${i})" style="background:none; border:none; cursor:pointer; font-size:1.1rem; opacity:0.8; transition:0.2s;">✏️</button>
-                                </div>`;
-                        } else {
-                            updateStatusHtml = `<button type="button" class="btn-primary" onclick="setFinalStatus(${i})" style="width:100%; max-width:140px; padding:8px 0; font-size:0.85rem; border-radius:8px;">Set Final Status</button>`;
-                        }
-                    } 
-                    else if (currentStatus === 'waiting') {
-                        updateStatusHtml = `<button type="button" class="btn-call" style="padding:6px 14px !important; font-size:0.8rem !important; width:100%; max-width:120px;" onclick="sendAction(${i}, 'call')">📢 Call In</button>`;
-                    } 
-                    else if (currentStatus === 'hold') {
-                        updateStatusHtml = `<button type="button" class="btn-call" style="background:var(--success); padding:6px 14px !important; font-size:0.8rem !important; width:100%; max-width:120px;" onclick="sendAction(${i}, 'call')">▶️ Resume</button>`;
-                    } 
-                    else if (currentStatus === 'interviewing') {
-                        updateStatusHtml = `
-                            <div style="display:flex; justify-content:center; gap:4px; width:100%;">
-                                <button type="button" class="btn-done" style="padding:6px 8px !important; font-size:0.75rem !important; flex:1;" onclick="sendAction(${i}, 'pass')">Pass</button>
-                                <button type="button" class="btn-del" style="padding:6px 8px !important; font-size:0.75rem !important; flex:1;" onclick="sendAction(${i}, 'fail')">Reject</button>
-                                <button type="button" style="background:var(--warning); color:black; border:none; border-radius:50px; padding:6px 8px; font-weight:bold; cursor:pointer; font-size:0.75rem; flex:1;" onclick="sendAction(${i}, 'hold')">Hold</button>
-                            </div>
-                        `;
-                    } 
-                    else {
-                        // Unmarked or Absent state
-                        updateStatusHtml = `<span style="color:var(--text-muted); font-size:0.8rem; font-style:italic;">Candidate Absent</span>`;
-                        if(currentStatus === 'unmarked') {
-                           updateStatusHtml = `<span style="color:var(--text-muted); font-size:0.8rem; font-style:italic;">Awaiting Attendance</span>`;
-                        }
-                    }
-
-                    // 4. Build Actions Column (Permanent Actions)
-                    const actionsHtml = `
-                        <div style="display:flex; align-items:center; justify-content:center; gap:12px;">
-                            <button type="button" title="Rewrite Path" onclick="editPath(${i})" style="background:none; border:none; cursor:pointer; font-size:1.2rem; opacity:0.7; transition:0.2s;">✏️</button>
-                            <button type="button" title="Remove Candidate" onclick="remove(${i})" style="background:none; border:none; cursor:pointer; font-size:1.3rem; color:var(--danger); font-weight:bold; opacity:0.7; transition:0.2s;">✕</button>
-                        </div>
-                    `;
-
-                    list.innerHTML += `<tr>
-                        <td style="font-family: monospace; color: var(--text-muted); letter-spacing: 0.5px;">${s.prn || 'N/A'}</td>
-                        <td class="align-left" style="font-weight:800;">${s.name}</td>
-                        <td style="color:var(--text-muted); font-size:0.9rem;">${s.branch || 'N/A'}</td>
-                        <td style="font-family: monospace;">${pathDisplay}</td>
-                        <td><span class="badge ${badgeClass}">${statusText}</span></td>
-                        <td>${attendanceHtml}</td>
-                        <td>${updateStatusHtml}</td>
-                        <td>${actionsHtml}</td>
-                    </tr>`;
-                });
-                filterQueue();
-            } catch (err) { console.error(err); }
-        }
-
-        async function sendAction(i, action) {
-            await fetch('/update-status', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ index: i, action }) }); 
-            loadQueue(); 
-        }
-
-        async function setFinalStatus(index) {
-            const finalStatus = await showModal({
-                title: "Set Final Status",
-                desc: "Enter the final result (e.g., Placed, Waitlisted, Not Selected):",
-                type: 'prompt',
-                confirmText: "Save Status"
-            });
-
-            if (finalStatus !== null && finalStatus.trim() !== "") {
-                await fetch('/update-final-status', { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify({ index, finalStatus }) 
-                });
-                loadQueue();
-            }
-        }
-
-        async function remove(i) { 
-            const confirmDel = await showModal({ title: "Remove Candidate?", desc: "Are you sure you want to completely remove this candidate from the pipeline?", type: 'confirm', danger: true, confirmText: "Remove" });
-            if(confirmDel) { await fetch(`/remove-student/${i}`, { method: 'DELETE' }); loadQueue(); } 
-        }
-
-        async function editPath(index) {
-            const res = await fetch('/get-queue');
-            const data = await res.json();
-            const student = data[index];
-            const currentPathString = student.path.join(', ');
-            
-            const newPath = await showModal({ title: `Edit Path: ${student.name}`, desc: "Update the interview rooms (comma separated):", type: 'prompt', defaultVal: currentPathString, confirmText: "Save Path" });
-            if (newPath !== null && newPath.trim() !== "") {
-                await fetch('/edit-student', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ index, newPath }) });
-                loadQueue();
-            }
-        }
-
-        async function resetSystem() {
-            const confirmFirst = await showModal({ title: "🚨 System Reset", desc: "Permanently delete ALL candidates and wipe the drive?", type: 'confirm', danger: true, confirmText: "Proceed" });
-            if (confirmFirst) {
-                const password = await showModal({ title: "Confirm Wipe", desc: "Type the word RESET to confirm:", type: 'prompt', danger: true, confirmText: "Wipe System" });
-                if (password === 'RESET') { await fetch('/reset-all', { method: 'POST' }); loadQueue(); }
-            }
-        }
-        
-        function downloadExcel() { window.location.href = '/download-excel'; }
-
-        function filterQueue() {
-            const query = document.getElementById('adminSearch').value.toLowerCase().trim();
-            const rows = document.querySelectorAll('#adminList tr');
-            rows.forEach(row => {
-                const nameCell = row.cells[1]; 
-                if (nameCell) row.style.display = nameCell.textContent.toLowerCase().includes(query) ? "" : "none";
-            });
-        }
-
-        const socket = io();
-        socket.on('queueUpdated', () => loadQueue());  
-    </script>
+            <div class="panel-section" style="margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px;">
+                <h4 style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 10px;">Administrative</h4>
+                <div id="panel-admin-actions" style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Edit path / Delete buttons injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
