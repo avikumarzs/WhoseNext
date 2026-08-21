@@ -47,7 +47,7 @@
         .modal-box h3 { margin-top: 0; color: var(--text-main); }
         .modal-box .input-group { margin-bottom: 15px; text-align: left; }
         .modal-box .input-group label { display: block; margin-bottom: 5px; font-size: 0.85rem; color: var(--text-muted); }
-        .modal-box .input-group input { width: 100%; box-sizing: border-box; }
+        .modal-box .input-group input, .modal-box select { width: 100%; box-sizing: border-box; }
         
         /* Table overrides for centering */
         .data-table th, .data-table td { text-align: center; }
@@ -115,6 +115,61 @@
         </div>
     </div>
     
+    <!-- Feature 2: Clickable Stat Drill-Down Modal -->
+    <div id="stat-details-modal" class="modal-overlay hidden">
+        <div class="modal-box" style="max-width: 600px; width: 95%;">
+            <h3 id="stat-modal-title">Candidates</h3>
+            <p id="stat-modal-desc" style="font-size: 0.85rem; margin-bottom: 15px;">List of candidates in this category.</p>
+            <div style="max-height: 350px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-main);">
+                <table class="data-table" style="box-shadow: none; border: none; margin: 0;">
+                    <thead style="position: sticky; top: 0; z-index: 10;">
+                        <tr>
+                            <th style="padding: 10px; font-size: 0.7rem; width: 30%;">PRN</th>
+                            <th class="align-left" style="padding: 10px; font-size: 0.7rem; width: 40%;">Name</th>
+                            <th style="padding: 10px; font-size: 0.7rem; width: 30%;">Branch</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stat-modal-list">
+                        <!-- Drill-down rows injected here -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-actions" style="margin-top: 20px;">
+                <button class="btn-primary" onclick="closeStatModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature 4: Override Status Modal -->
+    <div id="override-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <h3>🔄 Rewrite Status</h3>
+            <p style="font-size: 0.85rem; margin-bottom: 20px;">Override any past round or unlock the final verdict.</p>
+            
+            <div class="input-group">
+                <label>Target to Rewrite</label>
+                <select id="override-target" style="padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main);">
+                    <!-- Options injected via JS based on candidate's path -->
+                </select>
+            </div>
+
+            <div class="input-group" style="margin-top: 15px;">
+                <label>New Status</label>
+                <select id="override-status" style="padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main);">
+                    <option value="pending">Reset / Unlock (Pending)</option>
+                    <option value="passed">Passed</option>
+                    <option value="failed">Failed / Rejected</option>
+                    <option value="hold">Put on Hold</option>
+                </select>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 25px;">
+                <button class="btn-cancel" onclick="closeOverrideModal()">Cancel</button>
+                <button class="btn-primary" style="background: var(--danger);" onclick="submitOverride()">Force Rewrite</button>
+            </div>
+        </div>
+    </div>
+    
     <header style="display: flex; justify-content: space-between; align-items: center; padding: 1.2rem 2rem;">
         <h1 style="margin: 0; font-weight: 800; letter-spacing: -1px;">⚙️ Control Center</h1>
         
@@ -138,33 +193,35 @@
 
     <div class="dashboard-container">
         
-        <div id="uploadStatus" style="font-size: 0.9rem; color: var(--accent); text-align: center; padding-bottom: 10px;"></div>
+        <!-- Upload Toast -->
+        <div id="uploadStatus" class="upload-status-toast hidden"></div>
 
         <div class="main-content">
-            <!-- Feature 4: Collapsible Stats Section -->
+            <!-- Collapsible Stats Section -->
             <div id="stats-container" style="display: none;">
                 <div class="stats-container" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
-                    <div class="stat-card">
+                    <!-- Feature 2: Added onclick events to all cards -->
+                    <div class="stat-card" onclick="openStatModal('total')">
                         <span class="label">Total in Queue</span>
                         <span class="value" id="stat-total">0</span>
                     </div>
-                    <div class="stat-card" style="border-top: 4px solid var(--success);">
+                    <div class="stat-card" style="border-top: 4px solid var(--success);" onclick="openStatModal('active')">
                         <span class="label">Interviewing</span>
                         <span class="value" id="stat-active">0</span>
                     </div>
-                    <div class="stat-card" style="border-top: 4px solid var(--warning);">
+                    <div class="stat-card" style="border-top: 4px solid var(--warning);" onclick="openStatModal('waiting')">
                         <span class="label">Waiting</span>
                         <span class="value" id="stat-waiting">0</span>
                     </div>
-                    <div class="stat-card" style="border-top: 4px solid var(--primary);">
-                        <span class="label">Current Drive</span>
-                        <span class="value" id="stat-company" style="font-size: 1.1rem; line-height: 2.2;">-</span>
+                    <div class="stat-card" style="border-top: 4px solid var(--primary);" onclick="openStatModal('completed')">
+                        <span class="label">Completed</span>
+                        <span class="value" id="stat-completed">0</span>
                     </div>
                 </div>
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h2 style="font-size: 1.1rem; color: var(--text-muted); text-transform: uppercase;">Active Pipeline</h2>
+                <h2 id="dynamic-company-header" style="font-size: 1.1rem; color: var(--text-muted); text-transform: uppercase;">Active Pipeline</h2>
                 <button onclick="loadQueue()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer;" title="Refresh List">🔄</button>
             </div>
 
@@ -216,7 +273,7 @@
             <div class="panel-section" style="margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px;">
                 <h4 style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 10px;">Administrative</h4>
                 <div id="panel-admin-actions" style="display: flex; flex-direction: column; gap: 10px;">
-                    <!-- Edit path / Delete buttons injected here -->
+                    <!-- Edit path / Delete / Rewrite buttons injected here -->
                 </div>
             </div>
         </div>

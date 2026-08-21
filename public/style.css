@@ -69,14 +69,13 @@ header h1 {
 
 /* --- LAYOUTS (UPDATED FOR FULL-WIDTH) --- */
 .dashboard-container { 
-    display: block; /* Changed from flex to block to support edge-to-edge top bar */
+    display: block; 
     min-height: calc(100vh - 60px); 
     position: relative; 
-    padding: 1.5rem 2rem; /* Moved padding to the container */
+    padding: 1.5rem 2rem; 
     box-sizing: border-box;
 }
 
-/* Retaining sidebar classes just in case they are used on other pages */
 .sidebar { 
     width: 320px; 
     background: var(--surface); 
@@ -107,26 +106,73 @@ header h1 {
     background: var(--bg-main); 
 }
 
-/* --- STAT CARDS --- */
+/* --- REDESIGNED STAT CARDS --- */
 .stats-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.25rem;
+    gap: 1.5rem;
     margin-bottom: 2rem;
 }
 
 .stat-card {
     background: var(--surface);
-    padding: 1.25rem;
-    border-radius: var(--radius);
+    padding: 1.5rem;
+    border-radius: 16px;
     border: 1px solid var(--border);
-    box-shadow: var(--shadow-sm);
-    transition: transform 0.2s ease;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
-.stat-card:hover { transform: translateY(-2px); }
-.stat-card .label { color: var(--text-muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-.stat-card .value { font-size: 1.75rem; font-weight: 800; color: var(--primary); display: block; margin-top: 0.25rem; }
+.stat-card:hover { 
+    transform: translateY(-5px);
+    box-shadow: 0 12px 20px -8px rgba(0, 0, 0, 0.15);
+}
+
+.stat-card .label { 
+    color: var(--text-muted); 
+    font-size: 0.75rem; 
+    font-weight: 800; 
+    text-transform: uppercase; 
+    letter-spacing: 1px; 
+    margin-bottom: 8px;
+}
+
+.stat-card .value { 
+    font-size: 2.25rem; 
+    font-weight: 900; 
+    color: var(--text-main); 
+    line-height: 1.1; 
+}
+
+/* --- TOAST NOTIFICATION (EXCEL UPLOAD) --- */
+.upload-status-toast {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background: var(--surface);
+    color: var(--text-main);
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    border-left: 4px solid var(--primary);
+    z-index: 9999;
+    font-weight: 600;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transform: translateX(0);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.upload-status-toast.hidden {
+    opacity: 0;
+    transform: translateX(120%);
+    pointer-events: none;
+}
 
 /* --- INPUTS & BUTTONS --- */
 .input-group label { 
@@ -302,7 +348,7 @@ button:active { transform: translateY(0); }
 /* --- TV Layout Improvements --- */
 .tv-container {
     display: grid;
-    grid-template-columns: 1fr 350px; /* Main content + Sidebar queue */
+    grid-template-columns: 1fr 350px; 
     gap: 20px;
     height: calc(100vh - 120px);
 }
@@ -372,7 +418,7 @@ button:active { transform: translateY(0); }
     left: 0;
     width: 100%;
     height: 100%;
-    background: #0f172a; /* Match your dark theme background */
+    background: #0f172a; 
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -387,7 +433,7 @@ button:active { transform: translateY(0); }
     height: 50px;
     border: 3px solid rgba(255, 255, 255, 0.1);
     border-radius: 50%;
-    border-top-color: #3b82f6; /* Modern Blue accent */
+    border-top-color: #3b82f6; 
     animation: spin 1s ease-in-out infinite;
     margin-bottom: 15px;
 }
@@ -419,9 +465,8 @@ button:active { transform: translateY(0); }
     .now-serving-card { padding: 2.5vw; }
 }
 
-/* 2. SPLIT-SCREEN & TABLETS (Triggers earlier to prevent collisions) */
+/* 2. SPLIT-SCREEN & TABLETS */
 @media (max-width: 1024px) {
-    /* Unlock the fixed height */
     body { height: auto !important; overflow-y: auto !important; }
     
     .dashboard-container { 
@@ -435,7 +480,6 @@ button:active { transform: translateY(0); }
         padding-bottom: 2rem;
     }
 
-    /* Force the user.html grid to stack */
     .main-content { 
         grid-template-columns: 1fr !important; 
     }
@@ -447,7 +491,7 @@ button:active { transform: translateY(0); }
 
 /* 3. MOBILE PHONES */
 @media (max-width: 480px) {
-    .stats-container { grid-template-columns: 1fr; } /* Stats become a single column */
+    .stats-container { grid-template-columns: 1fr; } 
     .global-search { max-width: 100%; }
 }
 
@@ -481,7 +525,6 @@ button:active { transform: translateY(0); }
     overflow: hidden;
 }
 
-/* Subtle glowing top border */
 .now-serving-card::before {
     content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
     background: linear-gradient(90deg, var(--accent), var(--success));
@@ -571,7 +614,7 @@ button:active { transform: translateY(0); }
    ========================================= */
 .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(15, 23, 42, 0.85); /* Deep dark overlay */
+    background: rgba(15, 23, 42, 0.85); 
     backdrop-filter: blur(8px);
     display: flex; align-items: center; justify-content: center;
     z-index: 10000;
@@ -592,7 +635,7 @@ button:active { transform: translateY(0); }
     width: 90%; max-width: 420px;
     box-shadow: 0 20px 40px rgba(0,0,0,0.4);
     transform: scale(1) translateY(0);
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy spring effect */
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); 
 }
 
 .modal-overlay.hidden .modal-box {
@@ -652,20 +695,17 @@ button:active { transform: translateY(0); }
 
 .panel-content { padding: 25px; overflow-y: auto; flex: 1; }
 
-/* Make panel buttons full-width */
 .panel-section button { width: 100%; justify-content: center; padding: 12px !important; font-size: 0.95rem !important; }
 
 /* =========================================
    --- HIDE VISUAL SCROLLBARS GLOBALLY ---
    ========================================= */
 
-/* Hide scrollbar for Chrome, Safari and Edge */
 *::-webkit-scrollbar {
     display: none;
 }
 
-/* Hide scrollbar for Firefox and IE */
 * {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }

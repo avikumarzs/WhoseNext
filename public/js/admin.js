@@ -21,7 +21,9 @@ async function initializeDashboard() {
             if (response.ok) {
                 const data = await response.json();
                 if (data && data.company) {
-                   document.getElementById('stat-company').innerText = data.company;
+                   const companyName = data.company !== 'Placement Drive' ? data.company : 'Active Pipeline';
+                   const dynamicHeader = document.getElementById('dynamic-company-header');
+                   if (dynamicHeader) dynamicHeader.innerText = companyName;
                 }
             }
         }
@@ -104,7 +106,7 @@ async function saveCompanyDetails() {
         body: JSON.stringify({ company, date }) 
     });
     
-    document.getElementById('stat-company').innerText = company;
+    initializeDashboard();
     closeCompanyModal();
 }
 
@@ -136,7 +138,7 @@ async function addStudent() {
     }
 }
 
-// --- Bulletproof Excel Parsing (Strict Matching) ---
+// --- Bulletproof Excel Parsing ---
 function handleExcelUpload() {
     const fileInput = document.getElementById('excelFile');
     const statusDiv = document.getElementById('uploadStatus');
@@ -144,6 +146,7 @@ function handleExcelUpload() {
     
     const file = fileInput.files[0];
     statusDiv.innerText = "Reading file..."; 
+    statusDiv.classList.remove('hidden'); 
     
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -190,9 +193,15 @@ function handleExcelUpload() {
                         body: JSON.stringify({ students: studentsToUpload }) 
                     });
                     statusDiv.innerText = "Upload Complete!";
-                    setTimeout(() => statusDiv.innerText = "", 3000);
+                    setTimeout(() => {
+                        statusDiv.classList.add('hidden');
+                        statusDiv.innerText = "";
+                    }, 3000);
+                } else {
+                    statusDiv.classList.add('hidden');
                 }
             } else {
+                statusDiv.classList.add('hidden');
                 await showModal({ 
                     title: "Data Error", 
                     desc: "Could not locate an exact 'Name' or 'Student Name' header column. Please check your Excel formatting.", 
@@ -200,6 +209,7 @@ function handleExcelUpload() {
                 });
             }
         } catch (err) {
+            statusDiv.classList.add('hidden');
             await showModal({ title: "Upload Failed", desc: "Error: " + err.message, infoOnly: true });
         } finally {
             fileInput.value = ""; 
@@ -207,6 +217,55 @@ function handleExcelUpload() {
         }
     };
     reader.readAsArrayBuffer(file);
+}
+
+// --- Stat Drill-Down Logic ---
+function openStatModal(category) {
+    let filtered = [];
+    let title = "";
+    const data = globalQueueData;
+
+    if (category === 'total') {
+        filtered = data.filter(s => s.status !== 'absent');
+        title = "Total Candidates";
+    } else if (category === 'active') {
+        filtered = data.filter(s => s.status && s.status.toLowerCase() === 'interviewing');
+        title = "Currently Interviewing";
+    } else if (category === 'waiting') {
+        filtered = data.filter(s => s.status && (s.status.toLowerCase() === 'waiting' || s.status.toLowerCase() === 'hold'));
+        title = "Waiting / On Hold";
+    } else if (category === 'completed') {
+        filtered = data.filter(s => {
+            if (s.status === 'absent') return false;
+            const isCompletedPath = s.currentStep >= s.path.length;
+            return isCompletedPath || s.status === 'completed' || s.status === 'rejected';
+        });
+        title = "Completed Pipeline";
+    }
+
+    document.getElementById('stat-modal-title').innerText = title;
+    const list = document.getElementById('stat-modal-list');
+    list.innerHTML = '';
+
+    if (filtered.length === 0) {
+        list.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:25px; color:var(--text-muted); font-size: 0.9rem;">No candidates found in this category.</td></tr>';
+    } else {
+        filtered.forEach(s => {
+            list.innerHTML += `
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 12px 10px; font-family: monospace; font-size: 0.85rem; color: var(--text-muted);">${s.prn || 'N/A'}</td>
+                    <td class="align-left" style="padding: 12px 10px; font-weight: 700; font-size: 0.9rem;">${s.name}</td>
+                    <td style="padding: 12px 10px; color: var(--text-muted); font-size: 0.85rem;">${s.branch || 'N/A'}</td>
+                </tr>
+            `;
+        });
+    }
+    
+    document.getElementById('stat-details-modal').classList.remove('hidden');
+}
+
+function closeStatModal() {
+    document.getElementById('stat-details-modal').classList.add('hidden');
 }
 
 // --- Core Queue Logic ---
@@ -220,12 +279,18 @@ async function loadQueue() {
 
         const activeCount = data.filter(s => s.status && s.status.toLowerCase() === 'interviewing').length;
         const waitingCount = data.filter(s => s.status && (s.status.toLowerCase() === 'waiting' || s.status.toLowerCase() === 'hold')).length;
+        
+        const completedCount = data.filter(s => {
+            if (s.status === 'absent') return false;
+            const isCompletedPath = s.currentStep >= s.path.length;
+            return isCompletedPath || s.status === 'completed' || s.status === 'rejected';
+        }).length;
 
         document.getElementById('stat-total').innerText = data.filter(s => s.status !== 'absent').length; 
         document.getElementById('stat-active').innerText = activeCount;
         document.getElementById('stat-waiting').innerText = waitingCount;
+        if(document.getElementById('stat-completed')) document.getElementById('stat-completed').innerText = completedCount;
 
-        // Visual Queue Rendering
         let visibleCount = 0;
         const tickSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
         const crossSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
@@ -239,7 +304,6 @@ async function loadQueue() {
             const isCompletedPath = s.currentStep >= s.path.length;
             const isDone = (isCompletedPath || currentStatus === 'completed' || currentStatus === 'rejected');
             
-            // Feature 3: Enhanced Path Visibility (Larger, more spaced out)
             const pathDisplay = `<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding: 4px 0;">` +
                 s.path.map((room, idx) => {
                     if (isDone) return `<span style="background:var(--surface-hover); color:var(--text-muted); padding:5px 12px; border-radius:8px; font-size:0.85rem;">${room}</span>`;
@@ -268,9 +332,8 @@ async function loadQueue() {
                 attendanceHtml = `<span style="color:var(--success); font-weight:bold; font-size:0.85rem; padding: 4px 10px; background: rgba(0,255,0,0.1); border-radius: 20px;">✓ Marked</span>`;
             }
 
-            const manageHtml = `<button type="button" class="btn-primary" onclick="openPanel(${i})" style="padding:6px 16px !important; font-size:0.85rem !important; border-radius:50px;">⚙️ Manage</button>`;
+            const manageHtml = `<button type="button" onclick="openPanel(${i})" style="padding: 6px 14px; background: transparent; border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; cursor: pointer; transition: 0.2s; font-weight: 600; font-size: 0.85rem;" onmouseover="this.style.background='var(--surface-hover)'" onmouseout="this.style.background='transparent'">Open ↗</button>`;
 
-            // Added extra padding to td for taller rows (Feature 3)
             list.innerHTML += `<tr>
                 <td style="padding: 16px 10px; font-family: monospace; color: var(--text-muted); letter-spacing: 0.5px;">${s.prn || 'N/A'}</td>
                 <td class="align-left" style="padding: 16px 10px; font-weight:800;">${s.name}</td>
@@ -290,7 +353,7 @@ async function loadQueue() {
 
         const openPrn = sessionStorage.getItem('openPanelPRN');
         if (openPrn) {
-            const reOpenIndex = data.findIndex(student => student.prn === openPrn);
+            const reOpenIndex = data.findIndex((student, index) => (student.prn + '-' + index) === openPrn);
             if (reOpenIndex !== -1 && data[reOpenIndex].status !== 'absent') {
                 openPanel(reOpenIndex);
             } else {
@@ -319,7 +382,7 @@ function openPanel(index) {
     const s = globalQueueData[index];
     if (!s) return;
 
-    sessionStorage.setItem('openPanelPRN', s.prn || s.name);
+    sessionStorage.setItem('openPanelPRN', s.prn + '-' + index);
 
     const currentStatus = s.status ? s.status.toLowerCase() : 'unmarked';
     const isCompletedPath = s.currentStep >= s.path.length;
@@ -363,20 +426,30 @@ function openPanel(index) {
 
     let actionButtonsHtml = '';
     
-    // Feature 1: Standardized Final Status choices inside the Panel
     if (isDone) {
         let currentFinal = s.finalStatus || 'Pending';
-        actionButtonsHtml = `
-            <div style="text-align:center; padding: 15px; background: rgba(0,0,0,0.02); border-radius: 12px; margin-bottom: 15px; border: 1px solid var(--border);">
-                <span style="color:var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 700; display:block; margin-bottom: 5px;">Final Verdict</span>
-                <span style="color:var(--text-main); font-size: 1.2rem; font-weight: 800; margin-bottom: 15px; display:block;">${currentFinal}</span>
-                
-                <div style="display:flex; gap:8px; justify-content:center; width: 100%;">
-                    <button type="button" class="btn-done" style="flex:1; padding:10px 5px !important; font-size:0.75rem !important;" onclick="saveFinalStatus(${index}, 'Selected');">🌟 Selected</button>
-                    <button type="button" class="btn-del" style="flex:1; padding:10px 5px !important; font-size:0.75rem !important;" onclick="saveFinalStatus(${index}, 'Rejected');">❌ Rejected</button>
-                    <button type="button" class="btn-primary" style="flex:1; padding:10px 5px !important; font-size:0.75rem !important; background:var(--warning); color:black;" onclick="saveFinalStatus(${index}, 'Put on Hold');">⏸️ Hold</button>
-                </div>
-            </div>`;
+        
+        // Feature 3: Lock Final Verdict
+        if (currentFinal !== 'Pending') {
+            actionButtonsHtml = `
+                <div style="text-align:center; padding: 15px; background: rgba(0,0,0,0.02); border-radius: 12px; margin-bottom: 15px; border: 1px solid var(--border);">
+                    <span style="color:var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 700; display:block; margin-bottom: 5px;">Final Verdict</span>
+                    <span style="color:var(--text-main); font-size: 1.2rem; font-weight: 800; margin-bottom: 8px; display:block;">🔒 ${currentFinal}</span>
+                    <span style="font-size: 0.75rem; color: var(--warning); display:block;">Locked. Use Rewrite Status to modify.</span>
+                </div>`;
+        } else {
+            actionButtonsHtml = `
+                <div style="text-align:center; padding: 15px; background: rgba(0,0,0,0.02); border-radius: 12px; margin-bottom: 15px; border: 1px solid var(--border);">
+                    <span style="color:var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 700; display:block; margin-bottom: 5px;">Final Verdict</span>
+                    <span style="color:var(--text-main); font-size: 1.2rem; font-weight: 800; margin-bottom: 15px; display:block;">Pending</span>
+                    
+                    <div style="display:flex; gap:8px; justify-content:center; width: 100%;">
+                        <button type="button" class="btn-done" style="flex:1; padding:10px 5px !important; font-size:0.75rem !important;" onclick="saveFinalStatus(${index}, 'Selected');">🌟 Selected</button>
+                        <button type="button" class="btn-del" style="flex:1; padding:10px 5px !important; font-size:0.75rem !important;" onclick="saveFinalStatus(${index}, 'Rejected');">❌ Rejected</button>
+                        <button type="button" class="btn-primary" style="flex:1; padding:10px 5px !important; font-size:0.75rem !important; background:var(--warning); color:black;" onclick="saveFinalStatus(${index}, 'Put on Hold');">⏸️ Hold</button>
+                    </div>
+                </div>`;
+        }
     } 
     else if (currentStatus === 'waiting') {
         actionButtonsHtml = `<button type="button" class="btn-call" onclick="sendAction(${index}, 'call');">📢 Call In to ${currentRoom}</button>`;
@@ -396,8 +469,9 @@ function openPanel(index) {
 
     statusActionsDiv.innerHTML = historyHtml + actionButtonsHtml;
     
-    // Feature 2: Redesigned Admin Buttons
+    // Feature 4: Added Rewrite Status Button
     adminActionsDiv.innerHTML = `
+        <button type="button" style="background: rgba(245, 158, 11, 0.1); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 8px; padding: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; width: 100%; margin-bottom: 10px;" onclick="openOverrideModal(${index}); closePanel();" onmouseover="this.style.background='var(--warning)'; this.style.color='white'" onmouseout="this.style.background='rgba(245, 158, 11, 0.1)'; this.style.color='var(--warning)'">🔄 Rewrite Status</button>
         <button type="button" style="background: var(--surface-hover); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 100%; margin-bottom: 10px;" onclick="editPath(${index}); closePanel();" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--surface-hover)'">✏️ Rewrite Room Path</button>
         <button type="button" style="background: rgba(255,0,0,0.05); color: var(--danger); border: 1px solid rgba(255,0,0,0.2); border-radius: 8px; padding: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; width: 100%;" onclick="remove(${index}); closePanel();" onmouseover="this.style.background='var(--danger)'; this.style.color='white'" onmouseout="this.style.background='rgba(255,0,0,0.05)'; this.style.color='var(--danger)'">✕ Remove from Pipeline</button>
     `;
@@ -412,20 +486,65 @@ function closePanel() {
     document.getElementById('control-panel').classList.add('hidden');
 }
 
-async function sendAction(i, action) {
-    await fetch('/update-status', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ index: i, action }) }); 
-    loadQueue(); 
+// --- Rewrite Status Logic ---
+let currentOverrideIndex = -1;
+
+function openOverrideModal(index) {
+    currentOverrideIndex = index;
+    const s = globalQueueData[index];
+    const targetSelect = document.getElementById('override-target');
+    targetSelect.innerHTML = '';
+    
+    // Add all rooms in their path
+    s.path.forEach((room, idx) => {
+        targetSelect.innerHTML += `<option value="${idx}">Round ${idx + 1}: ${room}</option>`;
+    });
+    // Add Final Verdict option
+    targetSelect.innerHTML += `<option value="final">Final Verdict</option>`;
+    
+    document.getElementById('override-modal').classList.remove('hidden');
 }
 
-// Function strictly for hitting the 3 predetermined final statuses
+function closeOverrideModal() {
+    document.getElementById('override-modal').classList.add('hidden');
+    currentOverrideIndex = -1;
+}
+
+async function submitOverride() {
+    if (currentOverrideIndex === -1) return;
+    
+    const target = document.getElementById('override-target').value;
+    const newStatus = document.getElementById('override-status').value;
+    
+    await fetch('/override-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index: currentOverrideIndex, target, newStatus })
+    });
+    
+    closeOverrideModal();
+    await loadQueue();
+    openPanel(currentOverrideIndex);
+}
+
+// --- Action API Calls ---
+async function sendAction(i, action) {
+    await fetch('/update-status', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ index: i, action }) }); 
+    await loadQueue(); 
+    
+    if (!document.getElementById('control-panel').classList.contains('hidden')) {
+        openPanel(i);
+    }
+}
+
 async function saveFinalStatus(index, status) {
     await fetch('/update-final-status', { 
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ index, finalStatus: status }) 
     });
-    loadQueue();
-    setTimeout(() => openPanel(index), 150); // Give backend a ms to resolve, then refresh panel
+    await loadQueue();
+    setTimeout(() => openPanel(index), 100);
 }
 
 async function remove(i) { 
@@ -465,7 +584,6 @@ function filterQueue() {
     });
 }
 
-// Feature 4 Logic: Toggle Stats visibility
 function toggleStats() {
     const statsContainer = document.getElementById('stats-container');
     if (statsContainer) {

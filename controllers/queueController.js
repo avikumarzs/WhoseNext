@@ -139,3 +139,68 @@ exports.resetAll = async (req, res) => {
     req.app.get('io').emit('queueUpdated');
     res.json({ message: "Reset" });
 };
+
+// --- NEW MASTER OVERRIDE FUNCTION ---
+exports.overrideStatus = async (req, res) => {
+    try {
+        const { index, target, newStatus } = req.body;
+        const students = await Student.find({ status: { $ne: 'finished' } });
+        const student = students[index];
+
+        if (!student) return res.status(404).json({ error: "Student not found" });
+
+        // OVERRIDE FINAL VERDICT
+        if (target === 'final') {
+            if (newStatus === 'pending') student.finalStatus = 'Pending';
+            else if (newStatus === 'passed') student.finalStatus = 'Selected';
+            else if (newStatus === 'failed') student.finalStatus = 'Rejected';
+            else if (newStatus === 'hold') student.finalStatus = 'Put on Hold';
+        } 
+        // OVERRIDE A SPECIFIC INTERVIEW ROUND
+        else {
+            const roundIdx = parseInt(target);
+            
+            // "Time Travel" logic: Wipes out history that happened AFTER this specific round
+            if (student.history && student.history.length > roundIdx) {
+                student.history = student.history.slice(0, roundIdx);
+            }
+            
+            // Reset Final Verdict to ensure data consistency
+            student.finalStatus = 'Pending';
+            
+            if (newStatus === 'pending') {
+                student.currentStep = roundIdx;
+                student.status = 'waiting';
+            } else if (newStatus === 'hold') {
+                student.currentStep = roundIdx;
+                student.status = 'hold';
+            } else if (newStatus === 'passed') {
+                // Mark this round as passed
+                student.history[roundIdx] = { room: student.path[roundIdx], result: 'Selected' };
+                // Move them forward
+                if (roundIdx < student.path.length - 1) {
+                    student.currentStep = roundIdx + 1;
+                    student.status = 'waiting';
+                } else {
+                    student.currentStep = roundIdx + 1;
+                    student.status = 'completed'; // Passed the very last round
+                }
+            } else if (newStatus === 'failed') {
+                // Mark this round as failed and reject them
+                student.history[roundIdx] = { room: student.path[roundIdx], result: 'Rejected' };
+                student.currentStep = roundIdx;
+                student.status = 'rejected';
+            }
+            
+            student.markModified('history'); 
+        }
+
+        await student.save();
+        req.app.get('io').emit('queueUpdated');
+        res.json({ success: true });
+        
+    } catch (err) {
+        console.error("Override Error:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const adminController = require('../controllers/adminController');
+const adminController = require('../controllers/AdminController'); // Capital A fix for Render
 const queueController = require('../controllers/queueController');
 
 // Health Check
@@ -19,6 +19,7 @@ router.post('/add-bulk-students', queueController.addBulkStudents);
 router.post('/edit-student', queueController.editStudent);
 router.post('/update-status', queueController.updateStatus);
 router.post('/update-final-status', queueController.updateFinalStatus);
+router.post('/override-status', queueController.overrideStatus); // New Override Endpoint
 router.delete('/remove-student/:index', queueController.removeStudent);
 router.post('/reset-all', queueController.resetAll);
 
